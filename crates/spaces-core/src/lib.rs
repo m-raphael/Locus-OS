@@ -6,6 +6,7 @@ use uuid::Uuid;
 const MIGRATION_V1: &str = include_str!("../migrations/0001_init.sql");
 const MIGRATION_V2: &str = include_str!("../migrations/0002_memories.sql");
 const MIGRATION_V3: &str = include_str!("../migrations/0003_collab.sql");
+const MIGRATION_V4: &str = include_str!("../migrations/0004_plugins.sql");
 
 #[derive(Debug, Error)]
 pub enum SpacesError {
@@ -94,6 +95,7 @@ impl Db {
         conn.execute_batch(MIGRATION_V1)?;
         conn.execute_batch(MIGRATION_V2)?;
         conn.execute_batch(MIGRATION_V3)?;
+        conn.execute_batch(MIGRATION_V4)?;
         Ok(Self { conn })
     }
 
@@ -102,6 +104,7 @@ impl Db {
         conn.execute_batch(MIGRATION_V1)?;
         conn.execute_batch(MIGRATION_V2)?;
         conn.execute_batch(MIGRATION_V3)?;
+        conn.execute_batch(MIGRATION_V4)?;
         Ok(Self { conn })
     }
 
@@ -311,6 +314,95 @@ impl Db {
         )?;
         Ok(())
     }
+
+    // ── Plugin registry (item 9) ───────────────────────────────────────────
+
+    pub fn install_plugin(&self, id: &str, name: &str, version: &str, manifest_json: &str) -> Result<()> {
+        let now = chrono::Utc::now().timestamp();
+        self.conn.execute(
+            "INSERT OR REPLACE INTO plugins (id, name, version, manifest_json, installed_at, enabled)
+             VALUES (?1, ?2, ?3, ?4, ?5, 1)",
+            params![id, name, version, manifest_json, now],
+        )?;
+        Ok(())
+    }
+
+    pub fn uninstall_plugin(&self, id: &str) -> Result<()> {
+        self.conn.execute("DELETE FROM plugins WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
+    pub fn list_installed_plugins(&self) -> Result<Vec<InstalledPlugin>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, version, manifest_json, installed_at, enabled FROM plugins ORDER BY name",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(InstalledPlugin {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                version: row.get(2)?,
+                manifest_json: row.get(3)?,
+                installed_at: row.get(4)?,
+                enabled: row.get::<_, i64>(5)? != 0,
+            })
+        })?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(SpacesError::Db)
+    }
+
+    pub fn set_plugin_enabled(&self, id: &str, enabled: bool) -> Result<()> {
+        self.conn.execute(
+            "UPDATE plugins SET enabled = ?1 WHERE id = ?2",
+            params![enabled as i64, id],
+        )?;
+        Ok(())
+    }
+
+    // ── Governance policies (N15 / G5) ───────────────────────────────────
+
+    pub fn upsert_policy(&self, id: &str, name: &str, rule_json: &str) -> Result<()> {
+        let now = chrono::Utc::now().timestamp();
+        self.conn.execute(
+            "INSERT OR REPLACE INTO policies (id, name, rule_json, created_at, enabled)
+             VALUES (?1, ?2, ?3, ?4, 1)",
+            params![id, name, rule_json, now],
+        )?;
+        Ok(())
+    }
+
+    pub fn list_policies(&self) -> Result<Vec<PolicyRecord>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, rule_json, created_at, enabled FROM policies ORDER BY name",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(PolicyRecord {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                rule_json: row.get(2)?,
+                created_at: row.get(3)?,
+                enabled: row.get::<_, i64>(4)? != 0,
+            })
+        })?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(SpacesError::Db)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstalledPlugin {
+    pub id: String,
+    pub name: String,
+    pub version: String,
+    pub manifest_json: String,
+    pub installed_at: i64,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PolicyRecord {
+    pub id: String,
+    pub name: String,
+    pub rule_json: String,
+    pub created_at: i64,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

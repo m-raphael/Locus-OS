@@ -1,12 +1,14 @@
 use crate::apps::{self, LegacyApp};
-use locus_agent::{AgentAction, AgentResult, scheduler::BackendStatus};
+use crate::marketplace::{PluginManifest, built_in_catalog};
+use locus_agent::{AgentAction, AgentResult, governance::{GovernanceEngine, GovernanceSummary, PolicyDecision}, orchestrator::OrchestratorResult, scheduler::BackendStatus};
 use tauri::Manager;
 use locus_parser::IntentJson;
-use spaces_core::{AttentionMode, CollabSignal, Db, Flow, Memory, Module, SpaceSummary};
+use spaces_core::{AttentionMode, CollabSignal, Db, Flow, InstalledPlugin, Memory, Module, SpaceSummary};
 use std::sync::Mutex;
 use tauri::State;
 
 pub struct AppDb(pub Mutex<Db>);
+pub struct AppGovernance(pub GovernanceEngine);
 
 #[tauri::command]
 pub fn parse_intent(input: String) -> IntentJson {
@@ -48,10 +50,15 @@ pub fn set_space_mode(
 #[tauri::command]
 pub fn run_agent(
     db: State<AppDb>,
+    gov: State<AppGovernance>,
     input: String,
     active_space_id: Option<String>,
     app: tauri::AppHandle,
 ) -> Result<AgentResult, String> {
+    let nim_key_check = std::env::var("NVIDIA_API_KEY").ok();
+    if let PolicyDecision::Deny(reason) = gov.0.check(&input, nim_key_check.is_some(), false) {
+        return Err(reason);
+    }
     // Legacy app intercept: "open <AppName>" → LaunchLegacyApp if found
     let lower = input.trim().to_lowercase();
     if lower.starts_with("open ") || lower.starts_with("launch ") {
@@ -218,4 +225,69 @@ pub fn create_module(
         .unwrap()
         .add_module(&flow_id, &component_type, &props_json)
         .map_err(|e| e.to_string())
+}
+
+// ── Governance (N15 / G5) ─────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn governance_summary(gov: State<AppGovernance>) -> GovernanceSummary {
+    gov.0.summary()
+}
+
+// ── Multi-agent orchestrator (N12 / G2) ───────────────────────────────────
+
+#[tauri::command]
+pub fn run_orchestrator(
+    db: State<AppDb>,
+    input: String,
+    active_space_id: Option<String>,
+    app: tauri::AppHandle,
+) -> OrchestratorResult {
+    let nim_key = std::env::var("NVIDIA_API_KEY").ok();
+    let model_path = app
+        .path()
+        .app_data_dir()
+        .ok()
+        .map(|d| d.join("models").join("locus-intent.mlmodel"));
+    let db = db.0.lock().unwrap();
+    locus_agent::orchestrator::orchestrate(
+        &input,
+        active_space_id,
+        &db,
+        nim_key.as_deref(),
+        model_path.as_deref(),
+    )
+}
+
+// ── Marketplace (item 9) ──────────────────────────────────────────────────
+
+#[tauri::command]
+pub fn list_marketplace() -> Vec<PluginManifest> {
+    built_in_catalog()
+}
+
+#[tauri::command]
+pub fn install_plugin(db: State<AppDb>, id: String) -> Result<(), String> {
+    let catalog = built_in_catalog();
+    let plugin = catalog.iter().find(|p| p.id == id)
+        .ok_or_else(|| format!("Plugin '{}' not found in catalog", id))?;
+    let manifest_json = serde_json::to_string(plugin).map_err(|e| e.to_string())?;
+    db.0.lock().unwrap()
+        .install_plugin(&plugin.id, &plugin.name, &plugin.version, &manifest_json)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn uninstall_plugin(db: State<AppDb>, id: String) -> Result<(), String> {
+    db.0.lock().unwrap().uninstall_plugin(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_installed_plugins(db: State<AppDb>) -> Result<Vec<InstalledPlugin>, String> {
+    db.0.lock().unwrap().list_installed_plugins().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn set_plugin_enabled(db: State<AppDb>, id: String, enabled: bool) -> Result<(), String> {
+    db.0.lock().unwrap().set_plugin_enabled(&id, enabled).map_err(|e| e.to_string())
 }

@@ -60,10 +60,11 @@ export function buildSuggestions(query: string): Suggestion[] {
   return out.slice(0, 6);
 }
 
-export type ModuleKind = "mail" | "calendar" | "live" | "doc" | "predictive";
+export type ModuleKind = "mail" | "calendar" | "live" | "doc" | "predictive" | "marketplace";
 
 export function modulesForSpace(label: string): ModuleKind[] {
   const l = label.toLowerCase();
+  if (l.includes("marketplace") || l.includes("plugin")) return ["marketplace"];
   if (l.includes("review") || l.includes("inbox")) return ["mail", "calendar", "live", "doc", "predictive"];
   if (l.includes("plan"))  return ["mail", "doc", "live", "predictive"];
   if (l.includes("draft")) return ["mail", "doc", "predictive"];
@@ -83,6 +84,7 @@ interface LocusStore {
   isDark: boolean;
   accent: string;
   backendLabel: "NPU" | "NIM" | "KEY" | null;
+  installedPluginIds: Set<string>;
 
   setSpaces: (spaces: SpaceSummary[]) => void;
   setActiveSpace: (id: string | null, label: string | null) => void;
@@ -95,6 +97,7 @@ interface LocusStore {
   setModules: (flowId: string, modules: Module[]) => void;
   toggleTheme: () => void;
   setBackendLabel: (label: "NPU" | "NIM" | "KEY" | null) => void;
+  setInstalledPluginIds: (ids: Set<string>) => void;
 }
 
 export const useLocusStore = create<LocusStore>((set) => ({
@@ -109,6 +112,7 @@ export const useLocusStore = create<LocusStore>((set) => ({
   isDark: false,
   accent: "#7c7cf2",
   backendLabel: null,
+  installedPluginIds: new Set(),
 
   setSpaces: (spaces) => set({ spaces }),
   setActiveSpace: (id, label) => set({ activeSpaceId: id, activeSpaceLabel: label }),
@@ -131,4 +135,5 @@ export const useLocusStore = create<LocusStore>((set) => ({
     set((s) => ({ modules: { ...s.modules, [flowId]: modules } })),
   toggleTheme: () => set((s) => ({ isDark: !s.isDark })),
   setBackendLabel: (label) => set({ backendLabel: label }),
+  setInstalledPluginIds: (ids) => set({ installedPluginIds: ids }),
 }));

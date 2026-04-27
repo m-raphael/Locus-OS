@@ -3,7 +3,8 @@ use tauri::Manager;
 
 mod commands;
 mod apps;
-use commands::AppDb;
+mod marketplace;
+use commands::{AppDb, AppGovernance};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -15,6 +16,7 @@ pub fn run() {
             let db = spaces_core::Db::open(db_path.to_str().unwrap())
                 .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
             app.manage(AppDb(Mutex::new(db)));
+            app.manage(AppGovernance(locus_agent::governance::GovernanceEngine::default()));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -39,6 +41,13 @@ pub fn run() {
             commands::create_flow,
             commands::list_modules,
             commands::create_module,
+            commands::governance_summary,
+            commands::run_orchestrator,
+            commands::list_marketplace,
+            commands::install_plugin,
+            commands::uninstall_plugin,
+            commands::list_installed_plugins,
+            commands::set_plugin_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Locus");

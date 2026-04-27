@@ -1,4 +1,6 @@
+pub mod governance;
 pub mod nim;
+pub mod orchestrator;
 pub mod scheduler;
 
 use locus_parser::{IntentJson, Verb};

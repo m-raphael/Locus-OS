@@ -7,8 +7,9 @@ import LiveModule from "./modules/LiveModule";
 import DocModule from "./modules/DocModule";
 import PredictiveModule from "./modules/PredictiveModule";
 import LegacyAppModule from "./modules/LegacyAppModule";
+import MarketplaceModule from "./modules/MarketplaceModule";
 
-const MODULE_MAP = { mail: MailModule, calendar: CalendarModule, live: LiveModule, doc: DocModule, predictive: PredictiveModule } as const;
+const MODULE_MAP = { mail: MailModule, calendar: CalendarModule, live: LiveModule, doc: DocModule, predictive: PredictiveModule, marketplace: MarketplaceModule } as const;
 
 interface SpaceViewProps { collab: ReturnType<typeof useCollabSession>; }
 
