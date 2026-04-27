@@ -6,6 +6,7 @@ interface AgentResult {
   action: { action: string; mode?: string };
   message: string;
   new_space_id: string | null;
+  suggested_next: string | null;
 }
 
 export default function LocusBar() {
@@ -13,7 +14,7 @@ export default function LocusBar() {
   const [active, setActive] = useState(false);
   const [sel, setSel] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { activeSpaceLabel, activeSpaceId, accent, setSpaces, setActiveSpace, setBarFocused, updateSpaceMode } = useLocusStore();
+  const { activeSpaceLabel, activeSpaceId, accent, setSpaces, setActiveSpace, setBarFocused, updateSpaceMode, setSuggestedNext } = useLocusStore();
 
   const suggestions = buildSuggestions(query);
 
@@ -49,6 +50,7 @@ export default function LocusBar() {
       if (result.new_space_id) {
         setActiveSpace(result.new_space_id, label);
       }
+      setSuggestedNext(result.suggested_next);
       if (result.action.action === "set_mode" && activeSpaceId && result.action.mode) {
         updateSpaceMode(activeSpaceId, result.action.mode as never);
       }

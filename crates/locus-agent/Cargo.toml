@@ -9,3 +9,4 @@ spaces-core = { path = "../spaces-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "1"
+reqwest = { version = "0.12", features = ["json", "blocking"] }

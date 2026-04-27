@@ -1,4 +1,4 @@
-use locus_agent::{AgentContext, AgentResult};
+use locus_agent::AgentResult;
 use locus_parser::IntentJson;
 use spaces_core::{AttentionMode, Db, Flow, Module, SpaceSummary};
 use std::sync::Mutex;
@@ -49,11 +49,10 @@ pub fn run_agent(
     input: String,
     active_space_id: Option<String>,
 ) -> Result<AgentResult, String> {
-    let intent = locus_parser::parse(&input);
-    let ctx = AgentContext { intent, active_space_id };
-    let routed = locus_agent::route(&ctx);
+    let nim_key = std::env::var("NVIDIA_API_KEY").ok();
     let db = db.0.lock().unwrap();
-    locus_agent::execute(routed, &db).map_err(|e| e.to_string())
+    locus_agent::run(&input, active_space_id, &db, nim_key.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

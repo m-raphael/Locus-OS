@@ -1,3 +1,5 @@
+pub mod nim;
+
 use locus_parser::{IntentJson, Verb};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -43,6 +45,8 @@ pub struct AgentResult {
     pub message: String,
     /// Set when the action creates a new Space — frontend uses this to activate it.
     pub new_space_id: Option<String>,
+    /// AI-suggested follow-up intent (from NIM); drives the Predictive module.
+    pub suggested_next: Option<String>,
 }
 
 /// Pure routing: intent → action. No I/O — execution happens in the command layer.
@@ -64,6 +68,7 @@ pub fn route(ctx: &AgentContext) -> AgentResult {
                     ephemeral: false,
                 },
                 new_space_id: None,
+                suggested_next: None,
             }
         }
 
@@ -81,6 +86,7 @@ pub fn route(ctx: &AgentContext) -> AgentResult {
                     ephemeral: true,
                 },
                 new_space_id: None,
+                suggested_next: None,
             }
         }
 
@@ -93,6 +99,7 @@ pub fn route(ctx: &AgentContext) -> AgentResult {
                     mode: mode.clone(),
                 },
                 new_space_id: None,
+                suggested_next: None,
             },
             _ => noop("No active space to change mode on", 0.0),
         },
@@ -106,6 +113,7 @@ pub fn route(ctx: &AgentContext) -> AgentResult {
                     mode: "recovery".into(),
                 },
                 new_space_id: None,
+                suggested_next: None,
             },
             None => noop("Nothing active to recover", 0.0),
         },
@@ -120,6 +128,7 @@ pub fn route(ctx: &AgentContext) -> AgentResult {
                 message: format!("Searching for '{}'", query),
                 action: AgentAction::FindSpace { query },
                 new_space_id: None,
+                suggested_next: None,
             }
         }
 
@@ -158,7 +167,40 @@ fn noop(reason: &str, confidence: f32) -> AgentResult {
         confidence,
         message: reason.into(),
         new_space_id: None,
+        suggested_next: None,
     }
+}
+
+/// Top-level entrypoint: parse → (NIM classify if key present) → route → execute.
+///
+/// `nim_api_key` is `Some(key)` when the user has set `NVIDIA_API_KEY`.
+/// When absent or on network error, falls back to the keyword classifier.
+pub fn run(
+    input: &str,
+    active_space_id: Option<String>,
+    db: &spaces_core::Db,
+    nim_api_key: Option<&str>,
+) -> Result<AgentResult> {
+    // Try NIM first, fall back to keyword parser
+    let (intent, suggested_from_ai) = if let Some(key) = nim_api_key {
+        match nim::classify(input, key) {
+            Some(ai) => (ai.intent, ai.suggested_next),
+            None => (locus_parser::parse(input), None),
+        }
+    } else {
+        (locus_parser::parse(input), None)
+    };
+
+    let ctx = AgentContext { intent, active_space_id };
+    let routed = route(&ctx);
+    let mut result = execute(routed, db)?;
+
+    // Prefer AI suggestion over hardcoded None
+    if result.suggested_next.is_none() {
+        result.suggested_next = suggested_from_ai;
+    }
+
+    Ok(result)
 }
 
 #[cfg(test)]

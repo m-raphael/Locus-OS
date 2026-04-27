@@ -1,7 +1,15 @@
+import { useLocusStore } from "../../store";
 import ModuleShell, { ModuleAction, ModuleProps } from "./ModuleShell";
 
 export default function PredictiveModule(props: Omit<ModuleProps, "children" | "dashed">) {
   const { accent } = props;
+  const suggestedNext = useLocusStore((s) => s.suggestedNext);
+
+  const title = suggestedNext ?? "Draft a response\nto Naomi.";
+  const body = suggestedNext
+    ? `LOTUS suggests: "${suggestedNext}" — based on your current context and recent activity.`
+    : "LOTUS sees the urgent flag, your free 3pm window, and the attached brief. It can draft something for you to edit.";
+
   return (
     <ModuleShell {...props} dashed>
       <div style={{ position: "relative", padding: "24px 28px", height: "100%", minHeight: 440, display: "flex", flexDirection: "column" }}>
@@ -14,14 +22,13 @@ export default function PredictiveModule(props: Omit<ModuleProps, "children" | "
               <path d="M12 3l2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4z"/>
             </svg>
           </span>
-          Predicted next
+          {suggestedNext ? "AI suggested" : "Predicted next"}
         </div>
-        <h3 style={{ marginTop: 24, fontSize: 34, lineHeight: 1.05, fontWeight: 600, letterSpacing: "-0.025em", color: "var(--text)" }}>
-          Draft a response<br/>to Naomi.
+        <h3 style={{ marginTop: 24, fontSize: 34, lineHeight: 1.05, fontWeight: 600, letterSpacing: "-0.025em", color: "var(--text)", whiteSpace: "pre-line" }}>
+          {title}
         </h3>
         <p style={{ marginTop: 16, fontSize: 14, lineHeight: 1.55, color: "var(--muted)" }}>
-          LOTUS sees the urgent flag, your free 3pm window, and the
-          attached brief. It can draft something for you to edit.
+          {body}
         </p>
         <div style={{ marginTop: "auto", paddingTop: 24, display: "flex", gap: 8 }}>
           <ModuleAction primary accent={accent}>Generate draft</ModuleAction>
