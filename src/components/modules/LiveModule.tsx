@@ -1,4 +1,5 @@
-import ModuleShell, { ModuleHeader, ModuleAction, ModuleProps } from "./ModuleShell";
+import ModuleShell, { ModuleHeader, ModuleProps } from "./ModuleShell";
+import { CollabActions, useCollabSession } from "../CollabBar";
 
 const PEOPLE = [
   { n: "TS", x: "20%", y: "30%", hue: 200, delay: "0s" },
@@ -6,7 +7,11 @@ const PEOPLE = [
   { n: "DM", x: "78%", y: "25%", hue: 140, delay: "0.8s" },
 ];
 
-export default function LiveModule(props: Omit<ModuleProps, "children">) {
+interface LiveModuleProps extends Omit<ModuleProps, "children"> {
+  collab?: ReturnType<typeof useCollabSession>;
+}
+
+export default function LiveModule({ collab, ...props }: LiveModuleProps) {
   return (
     <ModuleShell {...props}>
       <ModuleHeader kind="live" source="Live · collaboration" time="now" />
@@ -47,9 +52,11 @@ export default function LiveModule(props: Omit<ModuleProps, "children">) {
         <p style={{ marginTop: 8, fontSize: 14, lineHeight: 1.55, color: "var(--muted)" }}>
           They left a cursor near the metric framing. Want to jump in?
         </p>
-        <div style={{ marginTop: 20, display: "flex", gap: 8 }}>
-          <ModuleAction primary accent={props.accent}>Join</ModuleAction>
-          <ModuleAction accent={props.accent}>Watch</ModuleAction>
+        <div style={{ marginTop: 20 }}>
+          {collab
+            ? <CollabActions session={collab} />
+            : <p style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>Collab unavailable</p>
+          }
         </div>
       </div>
     </ModuleShell>

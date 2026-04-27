@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-const MIGRATION: &str = include_str!("../migrations/0001_init.sql");
+const MIGRATION_V1: &str = include_str!("../migrations/0001_init.sql");
+const MIGRATION_V2: &str = include_str!("../migrations/0002_memories.sql");
+const MIGRATION_V3: &str = include_str!("../migrations/0003_collab.sql");
 
 #[derive(Debug, Error)]
 pub enum SpacesError {
@@ -89,13 +91,17 @@ pub struct Db {
 impl Db {
     pub fn open(path: &str) -> Result<Self> {
         let conn = Connection::open(path)?;
-        conn.execute_batch(MIGRATION)?;
+        conn.execute_batch(MIGRATION_V1)?;
+        conn.execute_batch(MIGRATION_V2)?;
+        conn.execute_batch(MIGRATION_V3)?;
         Ok(Self { conn })
     }
 
     pub fn open_in_memory() -> Result<Self> {
         let conn = Connection::open_in_memory()?;
-        conn.execute_batch(MIGRATION)?;
+        conn.execute_batch(MIGRATION_V1)?;
+        conn.execute_batch(MIGRATION_V2)?;
+        conn.execute_batch(MIGRATION_V3)?;
         Ok(Self { conn })
     }
 
@@ -231,6 +237,118 @@ impl Db {
         )?;
         Ok(())
     }
+
+    // ── Context memory (item 6 / N3) ──────────────────────────────────────
+
+    pub fn store_memory(&self, content: &str, space_id: Option<&str>) -> Result<String> {
+        let id = Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().timestamp();
+        self.conn.execute(
+            "INSERT INTO memories (id, content, space_id, created_at) VALUES (?1, ?2, ?3, ?4)",
+            params![id, content, space_id, now],
+        )?;
+        Ok(id)
+    }
+
+    /// Full-text search via FTS5 BM25 ranking. Returns up to `limit` results.
+    pub fn search_memories(&self, query: &str, limit: usize) -> Result<Vec<Memory>> {
+        let q = query.trim();
+        if q.is_empty() {
+            return self.list_memories(limit);
+        }
+        let mut stmt = self.conn.prepare(
+            "SELECT id, content, space_id, created_at FROM memories
+             WHERE memories MATCH ?1 ORDER BY rank LIMIT ?2",
+        )?;
+        let rows = stmt.query_map(params![q, limit as i64], memory_row)?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(SpacesError::Db)
+    }
+
+    pub fn list_memories(&self, limit: usize) -> Result<Vec<Memory>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, content, space_id, created_at FROM memories
+             ORDER BY created_at DESC LIMIT ?1",
+        )?;
+        let rows = stmt.query_map(params![limit as i64], memory_row)?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(SpacesError::Db)
+    }
+
+    pub fn forget_memory(&self, id: &str) -> Result<()> {
+        self.conn.execute("DELETE FROM memories WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
+    // ── Live collab signaling (item 8 / N5) ───────────────────────────────
+
+    pub fn push_signal(&self, room_id: &str, peer_id: &str, kind: &str, payload: &str) -> Result<String> {
+        let id = Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().timestamp();
+        self.conn.execute(
+            "INSERT INTO collab_signals (id, room_id, peer_id, kind, payload, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![id, room_id, peer_id, kind, payload, now],
+        )?;
+        Ok(id)
+    }
+
+    /// Pull signals for a room that are newer than `since_ts` and NOT from `own_peer_id`.
+    pub fn poll_signals(&self, room_id: &str, own_peer_id: &str, since_ts: i64) -> Result<Vec<CollabSignal>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, room_id, peer_id, kind, payload, created_at
+             FROM collab_signals
+             WHERE room_id = ?1 AND peer_id != ?2 AND created_at > ?3
+             ORDER BY created_at ASC",
+        )?;
+        let rows = stmt.query_map(params![room_id, own_peer_id, since_ts], signal_row)?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(SpacesError::Db)
+    }
+
+    pub fn cleanup_signals(&self, room_id: &str, older_than_secs: i64) -> Result<()> {
+        let cutoff = chrono::Utc::now().timestamp() - older_than_secs;
+        self.conn.execute(
+            "DELETE FROM collab_signals WHERE room_id = ?1 AND created_at < ?2",
+            params![room_id, cutoff],
+        )?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Memory {
+    pub id: String,
+    pub content: String,
+    pub space_id: Option<String>,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollabSignal {
+    pub id: String,
+    pub room_id: String,
+    pub peer_id: String,
+    pub kind: String,
+    pub payload: String,
+    pub created_at: i64,
+}
+
+fn memory_row(row: &rusqlite::Row) -> rusqlite::Result<Memory> {
+    Ok(Memory {
+        id: row.get(0)?,
+        content: row.get(1)?,
+        space_id: row.get(2)?,
+        created_at: row.get(3)?,
+    })
+}
+
+fn signal_row(row: &rusqlite::Row) -> rusqlite::Result<CollabSignal> {
+    Ok(CollabSignal {
+        id: row.get(0)?,
+        room_id: row.get(1)?,
+        peer_id: row.get(2)?,
+        kind: row.get(3)?,
+        payload: row.get(4)?,
+        created_at: row.get(5)?,
+    })
 }
 
 #[cfg(test)]
@@ -294,5 +412,49 @@ mod tests {
         let db = db();
         let err = db.get_space("nonexistent").unwrap_err();
         assert!(matches!(err, SpacesError::NotFound(_)));
+    }
+
+    #[test]
+    fn store_and_recall_memory() {
+        let db = db();
+        db.store_memory("review inbox from Naomi", None).unwrap();
+        db.store_memory("plan trip to Lisbon", None).unwrap();
+        let results = db.search_memories("inbox", 5).unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(results[0].content.contains("Naomi"));
+    }
+
+    #[test]
+    fn list_memories_returns_all() {
+        let db = db();
+        db.store_memory("first intent", None).unwrap();
+        db.store_memory("second intent", None).unwrap();
+        let list = db.list_memories(10).unwrap();
+        assert_eq!(list.len(), 2);
+        let contents: Vec<_> = list.iter().map(|m| m.content.as_str()).collect();
+        assert!(contents.contains(&"first intent"));
+        assert!(contents.contains(&"second intent"));
+    }
+
+    #[test]
+    fn forget_memory_removes_it() {
+        let db = db();
+        let id = db.store_memory("temporary note", None).unwrap();
+        db.forget_memory(&id).unwrap();
+        let results = db.search_memories("temporary", 5).unwrap();
+        assert!(results.is_empty());
+    }
+
+    #[test]
+    fn collab_signals_poll_excludes_own_peer() {
+        let db = db();
+        db.push_signal("room1", "peer-a", "offer", r#"{"sdp":"..."}"#).unwrap();
+        // peer-a polling: should see nothing (own signals excluded)
+        let signals = db.poll_signals("room1", "peer-a", 0).unwrap();
+        assert!(signals.is_empty());
+        // peer-b polling: should see peer-a's offer
+        let signals = db.poll_signals("room1", "peer-b", 0).unwrap();
+        assert_eq!(signals.len(), 1);
+        assert_eq!(signals[0].kind, "offer");
     }
 }

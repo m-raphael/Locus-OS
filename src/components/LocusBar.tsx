@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { useLocusStore, buildSuggestions, Suggestion, SpaceSummary } from "../store";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 
+interface Memory { id: string; content: string; created_at: number; }
+
 interface AgentResult {
   action: { action: string; mode?: string };
   message: string;
@@ -14,10 +16,25 @@ export default function LocusBar() {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(false);
   const [sel, setSel] = useState(0);
+  const [memories, setMemories] = useState<Memory[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const { activeSpaceLabel, activeSpaceId, accent, setSpaces, setActiveSpace, setBarFocused, updateSpaceMode, setSuggestedNext, setLegacyAppContext } = useLocusStore();
 
   const suggestions = buildSuggestions(query);
+
+  // Recall memories on focus, or search when typing
+  useEffect(() => {
+    if (!active) return;
+    const load = async () => {
+      try {
+        const results: Memory[] = query.trim()
+          ? await invoke("search_memories", { query, limit: 4 })
+          : await invoke("list_memories", { limit: 4 });
+        setMemories(results);
+      } catch { setMemories([]); }
+    };
+    load();
+  }, [query, active]);
 
   // Voice: final speech result → submit as raw text intent
   const runText = useCallback(async (text: string) => {
@@ -131,6 +148,36 @@ export default function LocusBar() {
               </span>
             </div>
           ))}
+          {memories.length > 0 && (
+            <>
+              <div style={{ padding: "10px 20px 4px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", color: "var(--muted)", fontFamily: "var(--font-mono)", borderTop: "1px solid var(--dropdown-divider)" }}>
+                Recent
+              </div>
+              {memories.map((m) => (
+                <div key={m.id}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setQuery(m.content);
+                    setSel(0);
+                  }}
+                  style={{
+                    padding: "8px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
+                    cursor: "pointer", fontSize: 13, color: "var(--muted)",
+                    transition: "background 150ms",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--dropdown-row-active)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                >
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "85%" }}>{m.content}</span>
+                  <button
+                    onMouseDown={(e) => { e.stopPropagation(); invoke("forget_memory", { id: m.id }).then(() => setMemories(p => p.filter(x => x.id !== m.id))); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 14, padding: "0 4px", flexShrink: 0 }}
+                    title="Forget"
+                  >×</button>
+                </div>
+              ))}
+            </>
+          )}
           <div style={{
             padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
             fontSize: 11, color: "var(--muted)", fontFamily: "var(--font-mono)",

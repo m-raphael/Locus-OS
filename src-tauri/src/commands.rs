@@ -2,7 +2,7 @@ use crate::apps::{self, LegacyApp};
 use locus_agent::{AgentAction, AgentResult, scheduler::BackendStatus};
 use tauri::Manager;
 use locus_parser::IntentJson;
-use spaces_core::{AttentionMode, Db, Flow, Module, SpaceSummary};
+use spaces_core::{AttentionMode, CollabSignal, Db, Flow, Memory, Module, SpaceSummary};
 use std::sync::Mutex;
 use tauri::State;
 
@@ -89,14 +89,21 @@ pub fn run_agent(
         .ok()
         .map(|d| d.join("models").join("locus-intent.mlmodel"));
     let db = db.0.lock().unwrap();
-    locus_agent::run(
+    let result = locus_agent::run(
         &input,
         active_space_id,
         &db,
         nim_key.as_deref(),
         model_path.as_deref(),
     )
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+
+    // Auto-store every successful Space creation as a memory for future recall
+    if let Some(ref space_id) = result.new_space_id {
+        let _ = db.store_memory(&input, Some(space_id));
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]
@@ -112,6 +119,45 @@ pub fn launch_legacy_app(path: String) -> Result<(), String> {
 #[tauri::command]
 pub fn quit_legacy_app(bundle_id: String) -> Result<(), String> {
     apps::quit_app(&bundle_id)
+}
+
+// ── Context memory (item 6 / N3) ─────────────────────────────────────────
+
+#[tauri::command]
+pub fn store_memory(db: State<AppDb>, content: String, space_id: Option<String>) -> Result<String, String> {
+    db.0.lock().unwrap().store_memory(&content, space_id.as_deref()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn search_memories(db: State<AppDb>, query: String, limit: Option<usize>) -> Result<Vec<Memory>, String> {
+    db.0.lock().unwrap().search_memories(&query, limit.unwrap_or(8)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_memories(db: State<AppDb>, limit: Option<usize>) -> Result<Vec<Memory>, String> {
+    db.0.lock().unwrap().list_memories(limit.unwrap_or(12)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn forget_memory(db: State<AppDb>, id: String) -> Result<(), String> {
+    db.0.lock().unwrap().forget_memory(&id).map_err(|e| e.to_string())
+}
+
+// ── Live collab signaling (item 8 / N5) ──────────────────────────────────
+
+#[tauri::command]
+pub fn push_signal(db: State<AppDb>, room_id: String, peer_id: String, kind: String, payload: String) -> Result<String, String> {
+    db.0.lock().unwrap().push_signal(&room_id, &peer_id, &kind, &payload).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn poll_signals(db: State<AppDb>, room_id: String, peer_id: String, since_ts: i64) -> Result<Vec<CollabSignal>, String> {
+    db.0.lock().unwrap().poll_signals(&room_id, &peer_id, since_ts).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn cleanup_signals(db: State<AppDb>, room_id: String) -> Result<(), String> {
+    db.0.lock().unwrap().cleanup_signals(&room_id, 300).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

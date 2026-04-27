@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocusStore, modulesForSpace } from "../store";
+import { useCollabSession } from "./CollabBar";
 import MailModule from "./modules/MailModule";
 import CalendarModule from "./modules/CalendarModule";
 import LiveModule from "./modules/LiveModule";
@@ -9,7 +10,9 @@ import LegacyAppModule from "./modules/LegacyAppModule";
 
 const MODULE_MAP = { mail: MailModule, calendar: CalendarModule, live: LiveModule, doc: DocModule, predictive: PredictiveModule } as const;
 
-export default function SpaceView() {
+interface SpaceViewProps { collab: ReturnType<typeof useCollabSession>; }
+
+export default function SpaceView({ collab }: SpaceViewProps) {
   const { activeSpaceLabel, accent, legacyAppContext } = useLocusStore();
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
 
@@ -66,16 +69,16 @@ export default function SpaceView() {
           {kinds.map((kind, i) => {
             const Mod = MODULE_MAP[kind];
             const idx = legacyAppContext ? i + 1 : i;
-            return (
-              <Mod
-                key={i}
-                idx={idx}
-                accent={accent}
-                focused={focusedIdx === idx}
-                anyFocused={focusedIdx !== null}
-                onFocus={(e) => { e.stopPropagation(); setFocusedIdx(idx); }}
-              />
-            );
+            const sharedProps = {
+              idx, accent,
+              focused: focusedIdx === idx,
+              anyFocused: focusedIdx !== null,
+              onFocus: (e: React.MouseEvent) => { e.stopPropagation(); setFocusedIdx(idx); },
+            };
+            if (kind === "live") {
+              return <LiveModule key={i} {...sharedProps} collab={collab} />;
+            }
+            return <Mod key={i} {...sharedProps} />;
           })}
         </div>
       </div>

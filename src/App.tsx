@@ -7,9 +7,11 @@ import SpaceRail from "./components/SpaceRail";
 import IdleView from "./components/IdleView";
 import SpaceView from "./components/SpaceView";
 import LocusBar from "./components/LocusBar";
+import CollabBar, { useCollabSession } from "./components/CollabBar";
 
 export default function App() {
   const { isDark, accent, activeSpaceLabel, setBackendLabel } = useLocusStore();
+  const collab = useCollabSession();
 
   useEffect(() => {
     document.getElementById("root")?.setAttribute("data-theme", isDark ? "dark" : "light");
@@ -27,7 +29,8 @@ export default function App() {
       <LotusCanvas accent={accent} />
       <TopChrome />
       <SpaceRail />
-      {activeSpaceLabel ? <SpaceView /> : <IdleView />}
+      {activeSpaceLabel ? <SpaceView collab={collab} /> : <IdleView />}
+      <CollabBar session={collab} />
       <LocusBar />
     </div>
   );
