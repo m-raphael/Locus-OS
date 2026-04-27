@@ -1,159 +1,70 @@
-import { useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { Flow, SpaceSummary, useLocusStore } from "../store";
-import FlowRow from "./FlowRow";
+import { useState } from "react";
+import { useLocusStore, modulesForSpace } from "../store";
+import MailModule from "./modules/MailModule";
+import CalendarModule from "./modules/CalendarModule";
+import LiveModule from "./modules/LiveModule";
+import DocModule from "./modules/DocModule";
+import PredictiveModule from "./modules/PredictiveModule";
 
-const CONTAINER: React.CSSProperties = {
-  position: "relative",
-  zIndex: 1,
-  width: "100%",
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-  gap: 32,
-  padding: "48px 48px 120px",
-  overflowY: "auto",
-  scrollbarWidth: "none",
-};
-
-const SPACE_CARD: React.CSSProperties = {
-  background: "var(--fog-bg)",
-  backdropFilter: "var(--fog-blur)",
-  WebkitBackdropFilter: "var(--fog-blur)",
-  border: "var(--fog-border)",
-  borderRadius: "var(--fog-radius-module)",
-  boxShadow: "var(--fog-shadow)",
-  padding: "24px 28px",
-  transition: `all var(--motion-duration) var(--motion-ease)`,
-};
-
-const HEADER: React.CSSProperties = {
-  display: "flex",
-  alignItems: "flex-start",
-  justifyContent: "space-between",
-  marginBottom: 16,
-};
-
-const LABEL: React.CSSProperties = {
-  fontSize: 10,
-  fontWeight: 600,
-  color: "rgba(255,255,255,0.35)",
-  letterSpacing: "0.1em",
-  textTransform: "uppercase",
-  marginBottom: 4,
-};
-
-const TITLE: React.CSSProperties = {
-  fontSize: 22,
-  fontWeight: 600,
-  color: "rgba(255,255,255,0.9)",
-  letterSpacing: "-0.01em",
-};
-
-const MODE_PILL: React.CSSProperties = {
-  padding: "3px 10px",
-  borderRadius: 99,
-  fontSize: 11,
-  fontWeight: 500,
-  background: "rgba(255,255,255,0.08)",
-  color: "rgba(255,255,255,0.45)",
-  letterSpacing: "0.04em",
-  marginTop: 8,
-  display: "inline-block",
-};
-
-const DISMISS_BTN: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  cursor: "pointer",
-  color: "rgba(255,255,255,0.25)",
-  fontSize: 18,
-  lineHeight: 1,
-  padding: 4,
-  transition: `color var(--motion-duration) var(--motion-ease)`,
-};
-
-function SpaceCard({ space }: { space: SpaceSummary }) {
-  const { activeSpaceId, flows, setFlows, removeSpace } = useLocusStore();
-  const spaceFlows = flows[space.id] ?? [];
-
-  useEffect(() => {
-    invoke<Flow[]>("list_flows", { spaceId: space.id }).then((f) =>
-      setFlows(space.id, f)
-    );
-  }, [space.id, setFlows]);
-
-  const handleDismiss = async () => {
-    if (space.is_ephemeral) {
-      await invoke("dismiss_space", { spaceId: space.id });
-    }
-    removeSpace(space.id);
-  };
-
-  return (
-    <div
-      style={{
-        ...SPACE_CARD,
-        outline:
-          space.id === activeSpaceId
-            ? "1.5px solid rgba(255,255,255,0.18)"
-            : "none",
-      }}
-    >
-      <div style={HEADER}>
-        <div>
-          <p style={LABEL}>Space</p>
-          <p style={TITLE}>{space.description}</p>
-          <span style={MODE_PILL}>{space.attention_mode}</span>
-        </div>
-        <button
-          style={DISMISS_BTN}
-          onClick={handleDismiss}
-          title="Dismiss space"
-        >
-          ×
-        </button>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {spaceFlows.map((flow) => (
-          <FlowRow key={flow.id} flow={flow} />
-        ))}
-      </div>
-    </div>
-  );
-}
+const MODULE_MAP = { mail: MailModule, calendar: CalendarModule, live: LiveModule, doc: DocModule, predictive: PredictiveModule } as const;
 
 export default function SpaceView() {
-  const { spaces } = useLocusStore();
+  const { activeSpaceLabel, accent } = useLocusStore();
+  const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
 
-  if (spaces.length === 0) {
-    return (
-      <div
-        style={{
-          ...CONTAINER,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <p
-          style={{
-            color: "rgba(255,255,255,0.2)",
-            fontSize: 15,
-            letterSpacing: "0.02em",
-          }}
-        >
-          Press ⌘K to begin
-        </p>
-      </div>
-    );
-  }
+  if (!activeSpaceLabel) return null;
+
+  const kinds = modulesForSpace(activeSpaceLabel);
 
   return (
-    <div style={CONTAINER}>
-      {spaces.map((space) => (
-        <SpaceCard key={space.id} space={space} />
-      ))}
+    <div style={{ position: "absolute", inset: 0, zIndex: 10, display: "flex", flexDirection: "column", paddingTop: 110, paddingBottom: 120 }}>
+      {/* Space header */}
+      <div style={{ padding: "0 48px 32px", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>Space · flow</div>
+          <h1 style={{ marginTop: 8, fontSize: 64, lineHeight: 0.95, fontWeight: 600, letterSpacing: "-0.035em", color: "var(--text)", animation: "lotusFloatIn 500ms var(--motion-float)" }}>
+            {activeSpaceLabel}.
+          </h1>
+          <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
+            <span>{kinds.length} modules</span>
+            <span>·</span>
+            <span>updated just now</span>
+            <span>·</span>
+            <span style={{ color: accent }}>● live</span>
+          </div>
+        </div>
+        <div style={{ textAlign: "right", fontSize: 12, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
+          <div>scroll horizontally →</div>
+          <div style={{ marginTop: 4 }}>click a module to focus</div>
+        </div>
+      </div>
+
+      {/* Horizontal flow */}
+      <div
+        onClick={() => setFocusedIdx(null)}
+        style={{
+          flex: 1, overflowX: "auto", overflowY: "hidden",
+          scrollbarWidth: "thin",
+          WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%)",
+          maskImage: "linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 24, padding: "8px 48px 32px 48px", minWidth: "max-content" }}>
+          {kinds.map((kind, i) => {
+            const Mod = MODULE_MAP[kind];
+            return (
+              <Mod
+                key={i}
+                idx={i}
+                accent={accent}
+                focused={focusedIdx === i}
+                anyFocused={focusedIdx !== null}
+                onFocus={(e) => { e.stopPropagation(); setFocusedIdx(i); }}
+              />
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

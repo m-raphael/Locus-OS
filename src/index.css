@@ -1,45 +1,110 @@
+/* ── LOTUS-OS design tokens ── */
 :root {
-  --fog-bg: rgba(255, 255, 255, 0.15);
-  --fog-blur: blur(20px);
-  --fog-border: 1px solid rgba(255, 255, 255, 0.08);
-  --fog-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  --fog-radius-module: 24px;
-  --fog-radius-bar: 40px;
-  --motion-duration: 400ms;
-  --motion-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --mode-tint: transparent;
+  --bg: linear-gradient(180deg, #f4f1ee 0%, #ebe9e6 60%, #e2dfdb 100%);
+  --text: rgba(20, 22, 30, 0.94);
+  --muted: rgba(40, 44, 55, 0.55);
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-focused: rgba(255, 255, 255, 0.86);
+  --glass-border: rgba(20, 22, 30, 0.04);
+  --glass-border-focused: rgba(20, 22, 30, 0.06);
+  --glass-shadow: 0 0 0 1px rgba(20, 22, 30, 0.04), 0 24px 60px -24px rgba(20, 22, 30, 0.18), 0 6px 20px -10px rgba(20, 22, 30, 0.12);
+  --glass-shadow-focused: 0 0 0 1px rgba(20, 22, 30, 0.06), 0 40px 100px -30px var(--accent-55), 0 12px 32px -12px rgba(20, 22, 30, 0.18);
+  --rail-bg: rgba(255, 255, 255, 0.5);
+  --rail-shadow: 0 0 0 1px rgba(20, 22, 30, 0.04), 0 24px 60px -30px rgba(20, 22, 30, 0.18);
+  --locus-bg: rgba(255, 255, 255, 0.62);
+  --locus-shadow: 0 0 0 1px rgba(20, 22, 30, 0.04), 0 20px 50px -20px rgba(20, 22, 30, 0.18);
+  --locus-shadow-active: 0 0 0 1px var(--accent-55), 0 30px 80px -30px var(--accent-44), 0 8px 24px -10px rgba(20, 22, 30, 0.18);
+  --dropdown-bg: rgba(255, 255, 255, 0.82);
+  --dropdown-row-active: rgba(20, 22, 30, 0.07);
+  --dropdown-divider: rgba(20, 22, 30, 0.05);
+  --chip-bg: rgba(20, 22, 30, 0.04);
+  --grain-opacity: 0.09;
+  --grain-blend: multiply;
+  --vignette: radial-gradient(ellipse at center, transparent 60%, rgba(20, 22, 30, 0.08) 100%);
+
+  --accent: #7c7cf2;
+  --accent-55: #7c7cf288;
+  --accent-44: #7c7cf270;
+  --accent-33: #7c7cf255;
+  --accent-22: #7c7cf238;
+
+  --module-radius: 28px;
+  --rail-radius: 24px;
+  --locus-radius: 999px;
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --motion-float: cubic-bezier(0.22, 0.9, 0.32, 1);
+  --motion-ui: cubic-bezier(0.22, 0.9, 0.32, 1);
 }
 
-[data-mode="focus"]    { --mode-tint: rgba(100, 80, 220, 0.10); }
-[data-mode="recovery"] { --mode-tint: rgba(220, 160, 80, 0.08); }
-[data-mode="mirror"]   { --mode-tint: rgba(180, 210, 230, 0.10); }
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+[data-theme="dark"] {
+  --bg: linear-gradient(180deg, #0c0d11 0%, #0a0b0f 60%, #06070a 100%);
+  --text: rgba(235, 238, 245, 0.94);
+  --muted: rgba(220, 224, 235, 0.5);
+  --glass-bg: rgba(22, 24, 30, 0.55);
+  --glass-focused: rgba(28, 30, 38, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-border-focused: rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 30px 80px -20px var(--accent-55), 0 8px 30px -8px rgba(0, 0, 0, 0.6);
+  --glass-shadow-focused: 0 0 0 1px rgba(255, 255, 255, 0.10), 0 50px 120px -20px #7c7cf299, 0 12px 40px -10px rgba(0, 0, 0, 0.7);
+  --rail-bg: rgba(22, 24, 30, 0.45);
+  --rail-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 24px 60px -20px rgba(0, 0, 0, 0.5);
+  --locus-bg: rgba(22, 24, 30, 0.62);
+  --locus-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 24px 60px -20px rgba(0, 0, 0, 0.5);
+  --locus-shadow-active: 0 0 0 1px var(--accent-66, #7c7cf2aa), 0 30px 80px -20px var(--accent-66, #7c7cf2aa), 0 8px 30px -8px rgba(0, 0, 0, 0.55);
+  --dropdown-bg: rgba(22, 24, 30, 0.78);
+  --dropdown-row-active: rgba(255, 255, 255, 0.10);
+  --dropdown-divider: rgba(255, 255, 255, 0.05);
+  --chip-bg: rgba(255, 255, 255, 0.06);
+  --grain-opacity: 0.18;
+  --grain-blend: screen;
+  --vignette: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.45) 100%);
 }
 
-html,
-body,
-#root {
-  width: 100%;
-  height: 100%;
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  width: 100%; height: 100%;
   overflow: hidden;
   background: transparent;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
-    system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv01";
 }
 
-#root::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: var(--mode-tint);
-  pointer-events: none;
-  transition: background var(--motion-duration) var(--motion-ease);
-  z-index: 0;
+/* ── Keyframes ── */
+@keyframes lotusFloatIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+@keyframes lotusBlobA {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%       { transform: translate(4%, 6%) scale(1.05); }
+  66%       { transform: translate(-3%, 3%) scale(0.97); }
+}
+
+@keyframes lotusBlobB {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  40%       { transform: translate(-5%, -4%) scale(1.08); }
+  70%       { transform: translate(3%, 5%) scale(0.95); }
+}
+
+@keyframes lotusBlobC {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25%       { transform: translate(6%, -3%) scale(1.04); }
+  75%       { transform: translate(-4%, 6%) scale(0.98); }
+}
+
+@keyframes lotusBob {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+  50%       { transform: translate(-50%, -50%) translateY(-8px); }
+}
+
+@keyframes lotusLivePing {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50%       { opacity: 0;   transform: scale(2.2); }
 }
