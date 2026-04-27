@@ -251,6 +251,19 @@ impl Db {
         Ok(())
     }
 
+    pub fn cleanup_ephemeral_spaces(&self, older_than_hours: i64) -> Result<usize> {
+        let cutoff = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64
+            - older_than_hours * 3600;
+        let rows = self.conn.execute(
+            "DELETE FROM spaces WHERE is_ephemeral = 1 AND created_at < ?1",
+            params![cutoff],
+        )?;
+        Ok(rows)
+    }
+
     // ── Context memory (item 6 / N3) ──────────────────────────────────────
 
     pub fn store_memory(&self, content: &str, space_id: Option<&str>) -> Result<String> {

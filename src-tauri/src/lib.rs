@@ -15,6 +15,9 @@ pub fn run() {
             let db_path = data_dir.join("locus.sqlite");
             let db = spaces_core::Db::open(db_path.to_str().unwrap())
                 .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+            if let Ok(count) = db.cleanup_ephemeral_spaces(24) {
+                if count > 0 { eprintln!("[cleanup] Removed {} old ephemeral spaces", count); }
+            }
             app.manage(AppDb(Mutex::new(db)));
             app.manage(AppGovernance(locus_agent::governance::GovernanceEngine::default()));
             Ok(())
