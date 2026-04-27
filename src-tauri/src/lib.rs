@@ -62,6 +62,8 @@ pub fn run() {
             commands::list_simulations,
             commands::run_simulation,
             commands::get_simulation_results,
+            commands::log_audit_event,
+            commands::list_audit_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Locus");

@@ -11,6 +11,7 @@ const MIGRATION_V4: &str = include_str!("../migrations/0004_plugins.sql");
 const MIGRATION_V5: &str = include_str!("../migrations/0005_predictions.sql");
 const MIGRATION_V6: &str = include_str!("../migrations/0006_focus_goals.sql");
 const MIGRATION_V7: &str = include_str!("../migrations/0007_simulations.sql");
+const MIGRATION_V8: &str = include_str!("../migrations/0008_audit_logs.sql");
 
 #[derive(Debug, Error)]
 pub enum SpacesError {
@@ -103,6 +104,7 @@ impl Db {
         conn.execute_batch(MIGRATION_V5)?;
         conn.execute_batch(MIGRATION_V6)?;
         conn.execute_batch(MIGRATION_V7)?;
+        conn.execute_batch(MIGRATION_V8)?;
         Ok(Self { conn })
     }
 
@@ -115,6 +117,7 @@ impl Db {
         conn.execute_batch(MIGRATION_V5)?;
         conn.execute_batch(MIGRATION_V6)?;
         conn.execute_batch(MIGRATION_V7)?;
+        conn.execute_batch(MIGRATION_V8)?;
         Ok(Self { conn })
     }
 
@@ -615,6 +618,64 @@ impl Db {
         self.store_simulation_results(simulation_id, &results)?;
         Ok(results)
     }
+
+    // ── Audit logs (item 16 / N16) ───────────────────────────────────────
+
+    pub fn log_audit_event(
+        &self,
+        event_type: &str,
+        actor: Option<&str>,
+        resource_id: Option<&str>,
+        details: Option<&str>,
+    ) -> Result<String> {
+        let id = Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().timestamp();
+        self.conn.execute(
+            "INSERT INTO audit_logs (id, event_type, actor, resource_id, details, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![id, event_type, actor, resource_id, details, now],
+        )?;
+        Ok(id)
+    }
+
+    pub fn list_audit_logs(&self, event_type: Option<&str>, limit: usize) -> Result<Vec<AuditLog>> {
+        let sql = if event_type.is_some() {
+            "SELECT id, event_type, actor, resource_id, details, created_at FROM audit_logs WHERE event_type = ?1 ORDER BY created_at DESC LIMIT ?2"
+        } else {
+            "SELECT id, event_type, actor, resource_id, details, created_at FROM audit_logs ORDER BY created_at DESC LIMIT ?1"
+        };
+        let mut stmt = self.conn.prepare(sql)?;
+        let mut out = Vec::new();
+        if let Some(et) = event_type {
+            let mapped = stmt.query_map(params![et, limit as i64], |row| {
+                Ok(AuditLog {
+                    id: row.get(0)?,
+                    event_type: row.get(1)?,
+                    actor: row.get(2)?,
+                    resource_id: row.get(3)?,
+                    details: row.get(4)?,
+                    created_at: row.get(5)?,
+                })
+            })?;
+            for item in mapped {
+                out.push(item.map_err(SpacesError::from)?);
+            }
+        } else {
+            let mapped = stmt.query_map(params![limit as i64], |row| {
+                Ok(AuditLog {
+                    id: row.get(0)?,
+                    event_type: row.get(1)?,
+                    actor: row.get(2)?,
+                    resource_id: row.get(3)?,
+                    details: row.get(4)?,
+                    created_at: row.get(5)?,
+                })
+            })?;
+            for item in mapped {
+                out.push(item.map_err(SpacesError::from)?);
+            }
+        }
+        Ok(out)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -681,6 +742,16 @@ pub struct SimulationResult {
     pub outcome_name: String,
     pub probability: f64,
     pub confidence: f64,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditLog {
+    pub id: String,
+    pub event_type: String,
+    pub actor: Option<String>,
+    pub resource_id: Option<String>,
+    pub details: Option<String>,
     pub created_at: i64,
 }
 

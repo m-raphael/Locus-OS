@@ -3,7 +3,7 @@ use crate::marketplace::{PluginManifest, built_in_catalog};
 use locus_agent::{AgentAction, AgentResult, governance::{GovernanceEngine, GovernanceSummary, PolicyDecision}, orchestrator::OrchestratorResult, scheduler::BackendStatus};
 use tauri::Manager;
 use locus_parser::IntentJson;
-use spaces_core::{AttentionMode, CollabSignal, Db, Flow, FocusGoal, InstalledPlugin, Memory, Module, PredictedSpace, Simulation, SimulationResult, SpaceSummary};
+use spaces_core::{AttentionMode, AuditLog, CollabSignal, Db, Flow, FocusGoal, InstalledPlugin, Memory, Module, PredictedSpace, Simulation, SimulationResult, SpaceSummary};
 use std::sync::Mutex;
 use tauri::State;
 
@@ -30,8 +30,16 @@ pub fn create_space(
     let db = db.0.lock().unwrap();
     let intent_id = db.create_intent(&description).map_err(|e| e.to_string())?;
     let mode = AttentionMode::from_str(&mode);
-    db.create_space(&intent_id, mode, ephemeral)
-        .map_err(|e| e.to_string())
+    let details = format!("{description} | mode={mode:?} ephemeral={ephemeral}");
+    let space_id = db.create_space(&intent_id, mode, ephemeral)
+        .map_err(|e| e.to_string())?;
+    let _ = db.log_audit_event(
+        "space_created",
+        Some("locus_user"),
+        Some(&space_id),
+        Some(&details),
+    );
+    Ok(space_id)
 }
 
 #[tauri::command]
@@ -363,4 +371,29 @@ pub fn run_simulation(db: State<AppDb>, id: String, hours_ahead: Option<i32>) ->
 #[tauri::command]
 pub fn get_simulation_results(db: State<AppDb>, id: String) -> Result<Vec<SimulationResult>, String> {
     db.0.lock().unwrap().get_simulation_results(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn log_audit_event(
+    db: State<AppDb>,
+    eventType: String,
+    actor: Option<String>,
+    resourceId: Option<String>,
+    details: Option<String>,
+) -> Result<String, String> {
+    db.0.lock().unwrap().log_audit_event(
+        &eventType,
+        actor.as_deref(),
+        resourceId.as_deref(),
+        details.as_deref(),
+    ).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_audit_logs(
+    db: State<AppDb>,
+    eventType: Option<String>,
+    limit: Option<usize>,
+) -> Result<Vec<AuditLog>, String> {
+    db.0.lock().unwrap().list_audit_logs(eventType.as_deref(), limit.unwrap_or(50)).map_err(|e| e.to_string())
 }

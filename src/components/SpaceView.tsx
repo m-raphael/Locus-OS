@@ -10,8 +10,9 @@ import PredictiveModule from "./modules/PredictiveModule";
 import LegacyAppModule from "./modules/LegacyAppModule";
 import MarketplaceModule from "./modules/MarketplaceModule";
 import SimulationModule from "./modules/SimulationModule";
+import AuditLogModule from "./modules/AuditLogModule";
 
-const MODULE_MAP = { mail: MailModule, calendar: CalendarModule, live: LiveModule, doc: DocModule, predictive: PredictiveModule, marketplace: MarketplaceModule, simulation: SimulationModule } as const;
+const MODULE_MAP = { mail: MailModule, calendar: CalendarModule, live: LiveModule, doc: DocModule, predictive: PredictiveModule, marketplace: MarketplaceModule, simulation: SimulationModule, audit: AuditLogModule } as const;
 
 interface SpaceViewProps { collab: ReturnType<typeof useCollabSession>; }
 
