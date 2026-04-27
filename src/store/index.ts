@@ -60,16 +60,16 @@ export function buildSuggestions(query: string): Suggestion[] {
   return out.slice(0, 6);
 }
 
-export type ModuleKind = "mail" | "calendar" | "live" | "doc" | "predictive" | "marketplace";
+export type ModuleKind = "mail" | "calendar" | "live" | "doc" | "predictive" | "marketplace" | "simulation";
 
 export function modulesForSpace(label: string): ModuleKind[] {
   const l = label.toLowerCase();
   if (l.includes("marketplace") || l.includes("plugin")) return ["marketplace"];
-  if (l.includes("review") || l.includes("inbox")) return ["mail", "calendar", "live", "doc", "predictive"];
-  if (l.includes("plan"))  return ["mail", "doc", "live", "predictive"];
-  if (l.includes("draft")) return ["mail", "doc", "predictive"];
-  if (l.includes("find"))  return ["doc", "live", "predictive"];
-  return ["mail", "doc", "predictive"];
+  if (l.includes("review") || l.includes("inbox")) return ["mail", "calendar", "live", "doc", "predictive", "simulation"];
+  if (l.includes("plan"))  return ["mail", "doc", "live", "predictive", "simulation"];
+  if (l.includes("draft")) return ["mail", "doc", "predictive", "simulation"];
+  if (l.includes("find"))  return ["doc", "live", "predictive", "simulation"];
+  return ["mail", "doc", "predictive", "simulation"];
 }
 
 interface LocusStore {

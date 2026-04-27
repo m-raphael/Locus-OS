@@ -1,3 +1,4 @@
+use chrono::Timelike;
 use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -9,6 +10,7 @@ const MIGRATION_V3: &str = include_str!("../migrations/0003_collab.sql");
 const MIGRATION_V4: &str = include_str!("../migrations/0004_plugins.sql");
 const MIGRATION_V5: &str = include_str!("../migrations/0005_predictions.sql");
 const MIGRATION_V6: &str = include_str!("../migrations/0006_focus_goals.sql");
+const MIGRATION_V7: &str = include_str!("../migrations/0007_simulations.sql");
 
 #[derive(Debug, Error)]
 pub enum SpacesError {
@@ -100,6 +102,7 @@ impl Db {
         conn.execute_batch(MIGRATION_V4)?;
         conn.execute_batch(MIGRATION_V5)?;
         conn.execute_batch(MIGRATION_V6)?;
+        conn.execute_batch(MIGRATION_V7)?;
         Ok(Self { conn })
     }
 
@@ -111,6 +114,7 @@ impl Db {
         conn.execute_batch(MIGRATION_V4)?;
         conn.execute_batch(MIGRATION_V5)?;
         conn.execute_batch(MIGRATION_V6)?;
+        conn.execute_batch(MIGRATION_V7)?;
         Ok(Self { conn })
     }
 
@@ -494,6 +498,110 @@ impl Db {
         self.conn.execute("UPDATE focus_goals SET active = 0", [])?;
         Ok(())
     }
+
+    // ── Simulations (item 12 / N8) ────────────────────────────────────────
+
+    pub fn create_simulation(&self, name: &str, description: Option<&str>
+    ) -> Result<String> {
+        let id = Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().timestamp();
+        self.conn.execute(
+            "INSERT INTO simulations (id, name, description, created_at, status) VALUES (?1, ?2, ?3, ?4, 'pending')",
+            params![id, name, description, now],
+        )?;
+        Ok(id)
+    }
+
+    pub fn list_simulations(&self, limit: usize) -> Result<Vec<Simulation>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, description, created_at, status FROM simulations ORDER BY created_at DESC LIMIT ?1",
+        )?;
+        let rows = stmt.query_map(params![limit as i64], |row| {
+            Ok(Simulation {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+                created_at: row.get(3)?,
+                status: row.get(4)?,
+            })
+        })?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(SpacesError::Db)
+    }
+
+    pub fn update_simulation_status(&self, id: &str, status: &str
+    ) -> Result<()> {
+        self.conn.execute(
+            "UPDATE simulations SET status = ?1 WHERE id = ?2",
+            params![status, id],
+        )?;
+        Ok(())
+    }
+
+    pub fn store_simulation_results(&self, simulation_id: &str, results: &[(String, f64, f64)]
+    ) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        for (outcome_name, probability, confidence) in results {
+            let rid = Uuid::new_v4().to_string();
+            let now = chrono::Utc::now().timestamp();
+            tx.execute(
+                "INSERT INTO simulation_results (id, simulation_id, outcome_name, probability, confidence, created_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![rid, simulation_id, outcome_name, *probability, *confidence, now],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn get_simulation_results(&self, simulation_id: &str
+    ) -> Result<Vec<SimulationResult>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, outcome_name, probability, confidence, created_at
+             FROM simulation_results WHERE simulation_id = ?1 ORDER BY probability DESC",
+        )?;
+        let rows = stmt.query_map(params![simulation_id], |row| {
+            Ok(SimulationResult {
+                id: row.get(0)?,
+                outcome_name: row.get(1)?,
+                probability: row.get(2)?,
+                confidence: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        })?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(SpacesError::Db)
+    }
+
+    /// Run a simple Monte Carlo simulation using visit history.
+    /// Returns (outcome_name, probability, confidence) tuples.
+    pub fn run_simulation(&self, simulation_id: &str, hours_ahead: i32
+    ) -> Result<Vec<(String, f64, f64)>> {
+        let _now = chrono::Utc::now().timestamp();
+        let current_hour = chrono::Utc::now().hour() as i32;
+        let future_hour = (current_hour + hours_ahead) % 24;
+
+        // Get predictions for future hour
+        let predictions = self.predict_next_spaces(future_hour, 10)?;
+        if predictions.is_empty() {
+            self.update_simulation_status(simulation_id, "failed")?;
+            return Ok(vec![]);
+        }
+
+        let total_confidence: f32 = predictions.iter().map(|p| p.confidence).sum();
+        let count = predictions.len();
+        let mut results = Vec::new();
+        for p in &predictions {
+            let prob = if total_confidence > 0.0 {
+                (p.confidence / total_confidence) as f64
+            } else {
+                1.0 / count as f64
+            };
+            results.push((p.description.clone(), prob, p.confidence as f64));
+        }
+
+        self.update_simulation_status(simulation_id, "completed")?;
+        self.store_simulation_results(simulation_id, &results)?;
+        Ok(results)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -541,6 +649,26 @@ pub struct FocusGoal {
     pub description: Option<String>,
     pub created_at: i64,
     pub active: bool,
+}
+
+// ── Simulations (item 12 / N8) ───────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Simulation {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub created_at: i64,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SimulationResult {
+    pub id: String,
+    pub outcome_name: String,
+    pub probability: f64,
+    pub confidence: f64,
+    pub created_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -718,5 +846,28 @@ mod tests {
         db.clear_active_focus_goal().unwrap();
         let active = db.get_active_focus_goal().unwrap();
         assert!(active.is_none());
+    }
+
+    #[test]
+    fn simulation_lifecycle() {
+        let db = db();
+        // Seed visit data
+        db.record_visit("review inbox", 1714214400, 9).unwrap();
+        db.record_visit("review inbox", 1714300800, 9).unwrap();
+        db.record_visit("plan trip", 1714214400, 14).unwrap();
+
+        let sim_id = db.create_simulation("morning forecast", Some("what next at 9am")).unwrap();
+        let sims = db.list_simulations(10).unwrap();
+        assert_eq!(sims.len(), 1);
+        assert_eq!(sims[0].status, "pending");
+
+        let results = db.run_simulation(&sim_id, 0).unwrap();
+        assert!(!results.is_empty());
+
+        let stored = db.get_simulation_results(&sim_id).unwrap();
+        assert!(!stored.is_empty());
+        let names: Vec<_> = stored.iter().map(|r| r.outcome_name.as_str()).collect();
+        assert!(names.contains(&"review inbox"));
+        assert!(stored[0].probability > 0.0 && stored[0].probability <= 1.0);
     }
 }

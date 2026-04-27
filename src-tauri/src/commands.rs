@@ -3,7 +3,7 @@ use crate::marketplace::{PluginManifest, built_in_catalog};
 use locus_agent::{AgentAction, AgentResult, governance::{GovernanceEngine, GovernanceSummary, PolicyDecision}, orchestrator::OrchestratorResult, scheduler::BackendStatus};
 use tauri::Manager;
 use locus_parser::IntentJson;
-use spaces_core::{AttentionMode, CollabSignal, Db, Flow, FocusGoal, InstalledPlugin, Memory, Module, PredictedSpace, SpaceSummary};
+use spaces_core::{AttentionMode, CollabSignal, Db, Flow, FocusGoal, InstalledPlugin, Memory, Module, PredictedSpace, Simulation, SimulationResult, SpaceSummary};
 use std::sync::Mutex;
 use tauri::State;
 
@@ -337,4 +337,30 @@ pub fn set_active_focus_goal(db: State<AppDb>, id: String) -> Result<(), String>
 #[tauri::command]
 pub fn clear_active_focus_goal(db: State<AppDb>) -> Result<(), String> {
     db.0.lock().unwrap().clear_active_focus_goal().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn create_simulation(db: State<AppDb>, name: String, description: Option<String>) -> Result<String, String> {
+    db.0.lock().unwrap().create_simulation(&name, description.as_deref()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_simulations(db: State<AppDb>, limit: Option<usize>) -> Result<Vec<Simulation>, String> {
+    db.0.lock().unwrap().list_simulations(limit.unwrap_or(20)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn run_simulation(db: State<AppDb>, id: String, hours_ahead: Option<i32>) -> Result<Vec<SimulationResult>, String> {
+    let mut guard = db.0.lock().unwrap();
+    let _ = guard.update_simulation_status(&id, "running");
+    let results = guard.run_simulation(&id, hours_ahead.unwrap_or(0)).map_err(|e| e.to_string())?;
+    let tuples: Vec<(String, f64, f64)> = results.into_iter().map(|(name, prob, conf)| (name, prob, conf)).collect();
+    guard.store_simulation_results(&id, &tuples).map_err(|e| e.to_string())?;
+    let _ = guard.update_simulation_status(&id, "completed");
+    guard.get_simulation_results(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_simulation_results(db: State<AppDb>, id: String) -> Result<Vec<SimulationResult>, String> {
+    db.0.lock().unwrap().get_simulation_results(&id).map_err(|e| e.to_string())
 }

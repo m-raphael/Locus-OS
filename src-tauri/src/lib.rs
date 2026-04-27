@@ -55,6 +55,10 @@ pub fn run() {
             commands::get_active_focus_goal,
             commands::set_active_focus_goal,
             commands::clear_active_focus_goal,
+            commands::create_simulation,
+            commands::list_simulations,
+            commands::run_simulation,
+            commands::get_simulation_results,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Locus");
