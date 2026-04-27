@@ -8,6 +8,7 @@ import IdleView from "./components/IdleView";
 import SpaceView from "./components/SpaceView";
 import LocusBar from "./components/LocusBar";
 import CollabBar, { useCollabSession } from "./components/CollabBar";
+import GovernanceChip from "./components/GovernanceChip";
 
 export default function App() {
   const { isDark, accent, activeSpaceLabel, setBackendLabel } = useLocusStore();
@@ -31,6 +32,7 @@ export default function App() {
       <SpaceRail />
       {activeSpaceLabel ? <SpaceView collab={collab} /> : <IdleView />}
       <CollabBar session={collab} />
+      <GovernanceChip />
       <LocusBar />
     </div>
   );

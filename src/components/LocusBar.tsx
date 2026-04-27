@@ -12,11 +12,26 @@ interface AgentResult {
   suggested_next: string | null;
 }
 
+interface OrchestratorResult {
+  tasks: { id: string; prompt: string; result: { message: string; new_space_id: string | null } | null; error: string | null }[];
+  primary_space_id: string | null;
+  summary: string;
+}
+
+const COMPOUND_SEPS = [" and ", " then ", " also ", "; ", " + "];
+function compoundTaskCount(q: string): number {
+  let parts = [q.toLowerCase()];
+  for (const sep of COMPOUND_SEPS) parts = parts.flatMap((p) => p.split(sep)).filter(Boolean);
+  return Math.max(parts.length, 1);
+}
+
 export default function LocusBar() {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(false);
   const [sel, setSel] = useState(0);
   const [memories, setMemories] = useState<Memory[]>([]);
+  const [orchestrating, setOrchestrating] = useState(false);
+  const [orchTasks, setOrchTasks] = useState<OrchestratorResult["tasks"]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const { activeSpaceLabel, activeSpaceId, accent, setSpaces, setActiveSpace, setBarFocused, updateSpaceMode, setSuggestedNext, setLegacyAppContext } = useLocusStore();
 
@@ -53,6 +68,25 @@ export default function LocusBar() {
       setActiveSpace("preview-" + Date.now(), text);
     }
   }, [activeSpaceId, setSpaces, setActiveSpace, setSuggestedNext, updateSpaceMode]);
+
+  const runOrchestrate = useCallback(async (text: string) => {
+    setQuery("");
+    setActive(false);
+    setOrchestrating(true);
+    inputRef.current?.blur();
+    try {
+      const result = await invoke<OrchestratorResult>("run_orchestrator", { input: text, activeSpaceId });
+      setOrchTasks(result.tasks);
+      const updated = await invoke<SpaceSummary[]>("list_spaces");
+      setSpaces(updated);
+      if (result.primary_space_id) setActiveSpace(result.primary_space_id, text);
+      setSuggestedNext(null);
+      setTimeout(() => { setOrchTasks([]); setOrchestrating(false); }, 4000);
+    } catch {
+      setActiveSpace("preview-" + Date.now(), text);
+      setOrchestrating(false);
+    }
+  }, [activeSpaceId, setSpaces, setActiveSpace, setSuggestedNext]);
 
   const { state: micState, isSupported: micSupported, toggle: toggleMic } = useSpeechRecognition({
     onFinalResult: runText,
@@ -107,10 +141,19 @@ export default function LocusBar() {
     }
   };
 
+  const taskCount = compoundTaskCount(query);
+  const isCompound = query.trim().length > 0 && taskCount > 1;
+
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") { e.preventDefault(); setSel(Math.min(sel + 1, suggestions.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setSel(Math.max(sel - 1, 0)); }
-    else if (e.key === "Enter" && suggestions[sel]) { e.preventDefault(); execute(suggestions[sel]); }
+    else if (e.key === "Enter") {
+      e.preventDefault();
+      if (suggestions[sel]) { execute(suggestions[sel]); }
+      else if (query.trim()) {
+        isCompound ? runOrchestrate(query.trim()) : runText(query.trim());
+      }
+    }
   };
 
   return (
@@ -186,6 +229,63 @@ export default function LocusBar() {
             <span>↑↓ navigate · ↵ execute · esc close</span>
             <span>LOTUS · intent v0.1</span>
           </div>
+        </div>
+      )}
+
+      {/* Compound-intent orchestrator hint */}
+      {isCompound && !orchestrating && (
+        <div style={{
+          marginBottom: 8,
+          padding: "9px 18px",
+          borderRadius: 16,
+          background: "var(--dropdown-bg)",
+          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          boxShadow: `0 0 0 1px var(--glass-border), 0 12px 40px -10px ${accent}33`,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          animation: "lotusFloatIn 220ms var(--motion-float)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            <span style={{ color: "var(--text)" }}>{taskCount} intents detected</span>
+            <span>·</span>
+            <span>orchestrator will run them in sequence</span>
+          </div>
+          <span
+            onMouseDown={(e) => { e.preventDefault(); runOrchestrate(query.trim()); }}
+            style={{ fontSize: 11, color: accent, fontFamily: "var(--font-mono)", cursor: "pointer", padding: "2px 8px", borderRadius: 999, background: `${accent}18`, border: `1px solid ${accent}33` }}
+          >↵ run</span>
+        </div>
+      )}
+
+      {/* Orchestrator task results */}
+      {orchTasks.length > 0 && (
+        <div style={{
+          marginBottom: 8, borderRadius: 18, overflow: "hidden",
+          background: "var(--dropdown-bg)",
+          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          boxShadow: `0 0 0 1px var(--glass-border), 0 16px 50px -12px ${accent}44`,
+        }}>
+          <div style={{ padding: "12px 18px 6px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.16em", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
+            Orchestrator · {orchTasks.length} tasks
+          </div>
+          {orchTasks.map((t, i) => (
+            <div key={t.id} style={{
+              padding: "8px 18px", display: "flex", alignItems: "center", gap: 10,
+              animation: `lotusTaskSplit 300ms var(--motion-float) ${i * 60}ms backwards`,
+            }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
+                background: t.error ? "#e05c5c" : t.result?.new_space_id ? accent : "var(--muted)",
+                boxShadow: t.result?.new_space_id ? `0 0 8px ${accent}88` : "none",
+              }}/>
+              <span style={{ fontSize: 12, color: "var(--muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.prompt}</span>
+              <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: t.error ? "#e05c5c" : "var(--muted)", flexShrink: 0 }}>
+                {t.error ? "err" : t.result ? "✓" : "…"}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 

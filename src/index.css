@@ -18,6 +18,7 @@
   --dropdown-row-active: rgba(20, 22, 30, 0.07);
   --dropdown-divider: rgba(20, 22, 30, 0.05);
   --chip-bg: rgba(20, 22, 30, 0.04);
+  --border: rgba(20, 22, 30, 0.07);
   --grain-opacity: 0.09;
   --grain-blend: multiply;
   --vignette: radial-gradient(ellipse at center, transparent 60%, rgba(20, 22, 30, 0.08) 100%);
@@ -58,6 +59,7 @@
   --dropdown-row-active: rgba(255, 255, 255, 0.10);
   --dropdown-divider: rgba(255, 255, 255, 0.05);
   --chip-bg: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.08);
   --grain-opacity: 0.18;
   --grain-blend: screen;
   --vignette: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.45) 100%);
@@ -107,4 +109,20 @@ html, body, #root {
 @keyframes lotusLivePing {
   0%, 100% { opacity: 0.7; transform: scale(1); }
   50%       { opacity: 0;   transform: scale(2.2); }
+}
+
+@keyframes lotusInstall {
+  0%   { transform: scale(0.92); opacity: 0; }
+  65%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+
+@keyframes lotusTaskSplit {
+  from { opacity: 0; transform: translateX(-10px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes lotusGovernancePulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 1; }
 }
