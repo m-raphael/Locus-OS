@@ -44,11 +44,21 @@ interface Props {
   onFocus: (e: React.MouseEvent) => void;
 }
 
+const PERMISSION_DESCRIPTIONS: Record<string, string> = {
+  network: "Makes outbound HTTP/WebSocket requests",
+  microphone: "Captures audio from your microphone",
+  file_system: "Reads and writes files on your device",
+  clipboard: "Reads and writes clipboard contents",
+  native_app: "Launches native macOS applications",
+  ai_inference: "Runs AI inference via local NPU or cloud NIM",
+};
+
 export default function MarketplaceModule({ idx, accent, focused, anyFocused, onFocus }: Props) {
   const { installedPluginIds, setInstalledPluginIds } = useLocusStore();
   const [catalog, setCatalog] = useState<PluginManifest[]>([]);
   const [justInstalled, setJustInstalled] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   async function loadCatalog() {
     const [all, installed] = await Promise.all([
@@ -121,12 +131,14 @@ export default function MarketplaceModule({ idx, accent, focused, anyFocused, on
             return (
               <div
                 key={plugin.id}
+                onClick={() => setPreviewId(previewId === plugin.id ? null : plugin.id)}
                 style={{
                   padding: "12px 24px",
                   borderBottom: i < catalog.length - 1 ? "1px solid var(--border)" : "none",
                   animation: isNew ? "lotusInstall 400ms var(--motion-float)" : undefined,
                   transition: "opacity 180ms",
                   opacity: isBusy ? 0.5 : 1,
+                  cursor: "pointer",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
@@ -187,6 +199,53 @@ export default function MarketplaceModule({ idx, accent, focused, anyFocused, on
                     {isBusy ? "…" : isInstalled ? "Remove" : "Install"}
                   </button>
                 </div>
+
+                {/* G11: Permission preview */}
+                {previewId === plugin.id && !isInstalled && (
+                  <div style={{
+                    marginTop: 10, padding: 12, borderRadius: 10,
+                    background: "var(--chip-bg)", border: "1px solid var(--border)",
+                  }}>
+                    <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--muted)", fontFamily: "var(--font-mono)", marginBottom: 8 }}>Permission Preview</div>
+                    {plugin.permissions.map((p) => {
+                      const risk = permRisk(p);
+                      const color = risk === "high" ? "#e05c5c" : risk === "med" ? "#d4924a" : "#5cb87a";
+                      return (
+                        <div key={p} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                          <span style={{
+                            width: 6, height: 6, borderRadius: 999,
+                            background: color, flexShrink: 0,
+                          }}></span>
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{p.replace(/_/g, " ")}</div>
+                            <div style={{ fontSize: 11, color: "var(--muted)" }}>{PERMISSION_DESCRIPTIONS[p] || "Unknown permission"}</div>
+                          </div>
+                          <span style={{
+                            marginLeft: "auto", fontSize: 9, fontFamily: "var(--font-mono)",
+                            textTransform: "uppercase", letterSpacing: "0.07em",
+                            padding: "2px 6px", borderRadius: 4,
+                            background: color + "18", color,
+                            border: `1px solid ${color}30`,
+                          }}>
+                            {risk} risk
+                          </span>
+                        </div>
+                      );
+                    })}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (!isBusy) toggle(plugin.id); }}
+                      style={{
+                        width: "100%", marginTop: 6,
+                        fontSize: 11, fontFamily: "var(--font-mono)",
+                        padding: "6px 12px", borderRadius: 999,
+                        border: `1px solid ${accent}55`, background: `${accent}18`, color: accent,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Confirm Install
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

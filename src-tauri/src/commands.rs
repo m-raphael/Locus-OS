@@ -3,7 +3,7 @@ use crate::marketplace::{PluginManifest, built_in_catalog};
 use locus_agent::{AgentAction, AgentResult, governance::{GovernanceEngine, GovernanceSummary, PolicyDecision}, orchestrator::OrchestratorResult, scheduler::BackendStatus};
 use tauri::Manager;
 use locus_parser::IntentJson;
-use spaces_core::{AttentionMode, CollabSignal, Db, Flow, InstalledPlugin, Memory, Module, SpaceSummary};
+use spaces_core::{AttentionMode, CollabSignal, Db, Flow, FocusGoal, InstalledPlugin, Memory, Module, PredictedSpace, SpaceSummary};
 use std::sync::Mutex;
 use tauri::State;
 
@@ -56,8 +56,16 @@ pub fn run_agent(
     app: tauri::AppHandle,
 ) -> Result<AgentResult, String> {
     let nim_key_check = std::env::var("NVIDIA_API_KEY").ok();
+    let db_guard = db.0.lock().unwrap();
+    let active_goal = db_guard.get_active_focus_goal().ok().flatten();
+    drop(db_guard);
     if let PolicyDecision::Deny(reason) = gov.0.check(&input, nim_key_check.is_some(), false) {
-        return Err(reason);
+        if active_goal.is_some() {
+            // Focus goal overrides governance denial
+            eprintln!("[focus] Governance override by goal '{}'", active_goal.as_ref().unwrap().name);
+        } else {
+            return Err(reason);
+        }
     }
     // Legacy app intercept: "open <AppName>" → LaunchLegacyApp if found
     let lower = input.trim().to_lowercase();
@@ -290,4 +298,43 @@ pub fn list_installed_plugins(db: State<AppDb>) -> Result<Vec<InstalledPlugin>, 
 #[tauri::command]
 pub fn set_plugin_enabled(db: State<AppDb>, id: String, enabled: bool) -> Result<(), String> {
     db.0.lock().unwrap().set_plugin_enabled(&id, enabled).map_err(|e| e.to_string())
+}
+
+// ── Predictive Spaces (item 10 / N6) ─────────────────────────────────────
+
+#[tauri::command]
+pub fn record_visit(db: State<AppDb>, description: String, visited_at: i64, hour_of_day: i32) -> Result<String, String> {
+    db.0.lock().unwrap().record_visit(&description, visited_at, hour_of_day).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn predict_next_spaces(db: State<AppDb>, current_hour: i32, limit: Option<usize>) -> Result<Vec<PredictedSpace>, String> {
+    db.0.lock().unwrap().predict_next_spaces(current_hour, limit.unwrap_or(5)).map_err(|e| e.to_string())
+}
+
+// ── Focus Goals (item 11 / N7) ───────────────────────────────────────────
+
+#[tauri::command]
+pub fn create_focus_goal(db: State<AppDb>, name: String, description: Option<String>) -> Result<String, String> {
+    db.0.lock().unwrap().create_focus_goal(&name, description.as_deref()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_focus_goals(db: State<AppDb>) -> Result<Vec<FocusGoal>, String> {
+    db.0.lock().unwrap().list_focus_goals().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_active_focus_goal(db: State<AppDb>) -> Result<Option<FocusGoal>, String> {
+    db.0.lock().unwrap().get_active_focus_goal().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn set_active_focus_goal(db: State<AppDb>, id: String) -> Result<(), String> {
+    db.0.lock().unwrap().set_active_focus_goal(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn clear_active_focus_goal(db: State<AppDb>) -> Result<(), String> {
+    db.0.lock().unwrap().clear_active_focus_goal().map_err(|e| e.to_string())
 }

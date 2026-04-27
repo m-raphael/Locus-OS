@@ -7,6 +7,8 @@ const MIGRATION_V1: &str = include_str!("../migrations/0001_init.sql");
 const MIGRATION_V2: &str = include_str!("../migrations/0002_memories.sql");
 const MIGRATION_V3: &str = include_str!("../migrations/0003_collab.sql");
 const MIGRATION_V4: &str = include_str!("../migrations/0004_plugins.sql");
+const MIGRATION_V5: &str = include_str!("../migrations/0005_predictions.sql");
+const MIGRATION_V6: &str = include_str!("../migrations/0006_focus_goals.sql");
 
 #[derive(Debug, Error)]
 pub enum SpacesError {
@@ -96,6 +98,8 @@ impl Db {
         conn.execute_batch(MIGRATION_V2)?;
         conn.execute_batch(MIGRATION_V3)?;
         conn.execute_batch(MIGRATION_V4)?;
+        conn.execute_batch(MIGRATION_V5)?;
+        conn.execute_batch(MIGRATION_V6)?;
         Ok(Self { conn })
     }
 
@@ -105,6 +109,8 @@ impl Db {
         conn.execute_batch(MIGRATION_V2)?;
         conn.execute_batch(MIGRATION_V3)?;
         conn.execute_batch(MIGRATION_V4)?;
+        conn.execute_batch(MIGRATION_V5)?;
+        conn.execute_batch(MIGRATION_V6)?;
         Ok(Self { conn })
     }
 
@@ -384,6 +390,110 @@ impl Db {
         })?;
         rows.collect::<std::result::Result<Vec<_>, _>>().map_err(SpacesError::Db)
     }
+
+    // ── Predictive Spaces (item 10 / N6) ───────────────────────────────────
+
+    pub fn record_visit(&self, description: &str, visited_at: i64, hour_of_day: i32
+    ) -> Result<String> {
+        let id = Uuid::new_v4().to_string();
+        self.conn.execute(
+            "INSERT INTO space_visits (id, description, visited_at, hour_of_day) VALUES (?1, ?2, ?3, ?4)",
+            params![id, description, visited_at, hour_of_day],
+        )?;
+        Ok(id)
+    }
+
+    /// Predict next spaces by grouping visit descriptions and scoring by
+    /// how close their typical hour-of-day is to the current hour.
+    pub fn predict_next_spaces(&self, current_hour: i32, limit: usize
+    ) -> Result<Vec<PredictedSpace>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT description,
+                    AVG(hour_of_day) AS avg_hour,
+                    COUNT(*) AS visit_count
+             FROM space_visits
+             GROUP BY description
+             ORDER BY visit_count DESC, ABS(avg_hour - ?1) ASC
+             LIMIT ?2",
+        )?;
+        let rows = stmt.query_map(params![current_hour, limit as i64], |row| {
+            let description: String = row.get(0)?;
+            let avg_hour: f64 = row.get(1)?;
+            let count: i64 = row.get(2)?;
+            let distance = (avg_hour - current_hour as f64).abs();
+            let confidence = ((1.0 - (distance / 12.0)).clamp(0.0, 1.0) * (count as f64).min(10.0) / 10.0) as f32;
+            let reason = if distance <= 1.5 {
+                format!("Visited {} times, usually around {:02}:00", count, avg_hour.round() as i32)
+            } else {
+                format!("Visited {} times, often around {:02}:00", count, avg_hour.round() as i32)
+            };
+            Ok(PredictedSpace {
+                description,
+                confidence,
+                reason,
+            })
+        })?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(SpacesError::Db)
+    }
+
+    // ── Focus Goals (item 11 / N7) ─────────────────────────────────────────
+
+    pub fn create_focus_goal(&self, name: &str, description: Option<&str>
+    ) -> Result<String> {
+        let id = Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().timestamp();
+        self.conn.execute(
+            "INSERT INTO focus_goals (id, name, description, created_at, active) VALUES (?1, ?2, ?3, ?4, 0)",
+            params![id, name, description, now],
+        )?;
+        Ok(id)
+    }
+
+    pub fn list_focus_goals(&self) -> Result<Vec<FocusGoal>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, description, created_at, active FROM focus_goals ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(FocusGoal {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+                created_at: row.get(3)?,
+                active: row.get::<_, i64>(4)? != 0,
+            })
+        })?;
+        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(SpacesError::Db)
+    }
+
+    pub fn get_active_focus_goal(&self) -> Result<Option<FocusGoal>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, description, created_at, active FROM focus_goals WHERE active = 1 LIMIT 1",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(FocusGoal {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                description: row.get(2)?,
+                created_at: row.get(3)?,
+                active: row.get::<_, i64>(4)? != 0,
+            })
+        })?;
+        let mut goals: Vec<FocusGoal> = rows.collect::<std::result::Result<Vec<_>, _>>().map_err(SpacesError::Db)?;
+        Ok(goals.pop())
+    }
+
+    pub fn set_active_focus_goal(&self, id: &str) -> Result<()> {
+        let tx = self.conn.unchecked_transaction()?;
+        tx.execute("UPDATE focus_goals SET active = 0", [])?;
+        tx.execute("UPDATE focus_goals SET active = 1 WHERE id = ?1", params![id])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn clear_active_focus_goal(&self) -> Result<()> {
+        self.conn.execute("UPDATE focus_goals SET active = 0", [])?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -403,6 +513,34 @@ pub struct PolicyRecord {
     pub rule_json: String,
     pub created_at: i64,
     pub enabled: bool,
+}
+
+// ── Predictive Spaces (item 10 / N6) ─────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpaceVisit {
+    pub id: String,
+    pub description: String,
+    pub visited_at: i64,
+    pub hour_of_day: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PredictedSpace {
+    pub description: String,
+    pub confidence: f32,
+    pub reason: String,
+}
+
+// ── Focus Goals (item 11 / N7) ───────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FocusGoal {
+    pub id: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub created_at: i64,
+    pub active: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -548,5 +686,37 @@ mod tests {
         let signals = db.poll_signals("room1", "peer-b", 0).unwrap();
         assert_eq!(signals.len(), 1);
         assert_eq!(signals[0].kind, "offer");
+    }
+
+    #[test]
+    fn record_visit_and_predict() {
+        let db = db();
+        db.record_visit("review inbox", 1714214400, 9).unwrap();
+        db.record_visit("review inbox", 1714300800, 9).unwrap();
+        db.record_visit("plan trip", 1714214400, 14).unwrap();
+
+        let predictions = db.predict_next_spaces(9, 5).unwrap();
+        assert!(!predictions.is_empty());
+        assert!(predictions[0].description == "review inbox");
+        assert!(predictions[0].confidence > 0.0);
+    }
+
+    #[test]
+    fn focus_goal_lifecycle() {
+        let db = db();
+        let id = db.create_focus_goal("deep work", Some("no meetings block")).unwrap();
+        let goals = db.list_focus_goals().unwrap();
+        assert_eq!(goals.len(), 1);
+        assert_eq!(goals[0].name, "deep work");
+        assert!(!goals[0].active);
+
+        db.set_active_focus_goal(&id).unwrap();
+        let active = db.get_active_focus_goal().unwrap();
+        assert!(active.is_some());
+        assert_eq!(active.unwrap().name, "deep work");
+
+        db.clear_active_focus_goal().unwrap();
+        let active = db.get_active_focus_goal().unwrap();
+        assert!(active.is_none());
     }
 }

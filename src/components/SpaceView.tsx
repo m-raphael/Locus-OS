@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useLocusStore, modulesForSpace } from "../store";
 import { useCollabSession } from "./CollabBar";
 import MailModule from "./modules/MailModule";
@@ -16,6 +17,17 @@ interface SpaceViewProps { collab: ReturnType<typeof useCollabSession>; }
 export default function SpaceView({ collab }: SpaceViewProps) {
   const { activeSpaceLabel, accent, legacyAppContext } = useLocusStore();
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
+
+  // Record visit for predictive spaces
+  useEffect(() => {
+    if (!activeSpaceLabel) return;
+    const now = new Date();
+    invoke("record_visit", {
+      description: activeSpaceLabel,
+      visitedAt: Math.floor(now.getTime() / 1000),
+      hourOfDay: now.getHours(),
+    }).catch(() => {});
+  }, [activeSpaceLabel]);
 
   if (!activeSpaceLabel) return null;
 

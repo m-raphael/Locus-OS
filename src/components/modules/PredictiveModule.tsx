@@ -1,44 +1,118 @@
-import { useLocusStore } from "../../store";
-import ModuleShell, { ModuleAction, ModuleProps } from "./ModuleShell";
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import ModuleShell, { ModuleHeader, ModuleAction, ModuleProps } from "./ModuleShell";
 
-export default function PredictiveModule(props: Omit<ModuleProps, "children" | "dashed">) {
-  const { accent } = props;
-  const suggestedNext = useLocusStore((s) => s.suggestedNext);
+interface PredictedSpace {
+  description: string;
+  confidence: number;
+  reason: string;
+}
 
-  const title = suggestedNext ?? "Draft a response\nto Naomi.";
-  const body = suggestedNext
-    ? `LOTUS suggests: "${suggestedNext}" — based on your current context and recent activity.`
-    : "LOTUS sees the urgent flag, your free 3pm window, and the attached brief. It can draft something for you to edit.";
+export default function PredictiveModule(props: Omit<ModuleProps, "children">) {
+  const { idx, accent, focused, anyFocused, onFocus } = props;
+  const [predictions, setPredictions] = useState<PredictedSpace[]>([]);
+  const [hour, setHour] = useState(new Date().getHours());
+  const [loading, setLoading] = useState(true);
+
+  async function loadPredictions() {
+    setLoading(true);
+    try {
+      const now = new Date();
+      setHour(now.getHours());
+      const result = await invoke<PredictedSpace[]>("predict_next_spaces", {
+        currentHour: now.getHours(),
+        limit: 5,
+      });
+      setPredictions(result);
+    } catch (e) {
+      console.error("predict_next_spaces failed:", e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPredictions();
+    const interval = setInterval(loadPredictions, 60000); // refresh every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  async function activatePrediction(description: string) {
+    try {
+      await invoke("create_space", {
+        description,
+        mode: "open",
+        ephemeral: false,
+      });
+      // Record visit immediately
+      const now = new Date();
+      await invoke("record_visit", {
+        description,
+        visitedAt: Math.floor(now.getTime() / 1000),
+        hourOfDay: now.getHours(),
+      });
+      loadPredictions();
+    } catch (e) {
+      console.error("activatePrediction failed:", e);
+    }
+  }
 
   return (
-    <ModuleShell {...props} dashed>
-      <div style={{ position: "relative", padding: "24px 28px", height: "100%", minHeight: 440, display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.14em", color: accent, fontFamily: "var(--font-mono)" }}>
-          <span style={{
-            display: "inline-flex", height: 20, width: 20, alignItems: "center", justifyContent: "center",
-            borderRadius: 6, background: `${accent}22`,
+    <ModuleShell idx={idx} accent={accent} focused={focused} anyFocused={anyFocused} onFocus={onFocus}>
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 440 }}>
+        <ModuleHeader kind="ai" source="Predictive" time={`${hour.toString().padStart(2, "0")}:00`} />
+
+        <div style={{ padding: "20px 28px 0" }}>
+          <div style={{
+            fontSize: 10, textTransform: "uppercase", letterSpacing: "0.16em",
+            color: "var(--muted)", fontFamily: "var(--font-mono)", marginBottom: 12,
           }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2">
-              <path d="M12 3l2.4 6.6L21 12l-6.6 2.4L12 21l-2.4-6.6L3 12l6.6-2.4z"/>
-            </svg>
-          </span>
-          {suggestedNext ? "AI suggested" : "Predicted next"}
+            Next Space
+          </div>
+          <div style={{
+            fontSize: 22, fontWeight: 600, color: "var(--text)",
+            letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 4,
+          }}>
+            {loading ? "Loading predictions…" : predictions.length > 0
+              ? `You usually "${predictions[0].description}" around now`
+              : "No pattern yet"}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+            {loading ? "" : predictions.length > 0 ? predictions[0].reason : "Keep using Spaces to build predictions."}
+          </div>
         </div>
-        <h3 style={{ marginTop: 24, fontSize: 34, lineHeight: 1.05, fontWeight: 600, letterSpacing: "-0.025em", color: "var(--text)", whiteSpace: "pre-line" }}>
-          {title}
-        </h3>
-        <p style={{ marginTop: 16, fontSize: 14, lineHeight: 1.55, color: "var(--muted)" }}>
-          {body}
-        </p>
-        <div style={{ marginTop: "auto", paddingTop: 24, display: "flex", gap: 8 }}>
-          <ModuleAction primary accent={accent}>Generate draft</ModuleAction>
-          <ModuleAction accent={accent}>Skip</ModuleAction>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 28px" }}>
+          {predictions.slice(1).map((p, i) => (
+            <div key={i} style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "10px 0", borderBottom: i < predictions.slice(1).length - 1 ? "1px solid var(--border)" : "none",
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 999,
+                background: `${accent}18`, display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 11, fontWeight: 600, color: accent, fontFamily: "var(--font-mono)",
+              }}>
+                {Math.round(p.confidence * 100)}%
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.01em" }}>{p.description}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{p.reason}</div>
+              </div>
+              <ModuleAction accent={accent} onClick={() => activatePrediction(p.description)}>
+                Start
+              </ModuleAction>
+            </div>
+          ))}
         </div>
-        <div style={{ marginTop: 20, display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
-          <div style={{ flex: 1, height: 1, background: "rgba(128,128,128,0.2)" }}/>
-          confidence 0.82
-          <div style={{ flex: 1, height: 1, background: "rgba(128,128,128,0.2)" }}/>
-        </div>
+
+        {predictions.length > 0 && (
+          <div style={{ padding: "0 28px 20px" }}>
+            <ModuleAction accent={accent} primary onClick={() => activatePrediction(predictions[0].description)}>
+              Start predicted Space
+            </ModuleAction>
+          </div>
+        )}
       </div>
     </ModuleShell>
   );

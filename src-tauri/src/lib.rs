@@ -48,6 +48,13 @@ pub fn run() {
             commands::uninstall_plugin,
             commands::list_installed_plugins,
             commands::set_plugin_enabled,
+            commands::record_visit,
+            commands::predict_next_spaces,
+            commands::create_focus_goal,
+            commands::list_focus_goals,
+            commands::get_active_focus_goal,
+            commands::set_active_focus_goal,
+            commands::clear_active_focus_goal,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Locus");
