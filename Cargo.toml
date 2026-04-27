@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/locus-parser",
     "crates/spaces-core",
+    "crates/locus-agent",
     "src-tauri",
 ]
 

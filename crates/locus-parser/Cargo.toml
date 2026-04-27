@@ -3,6 +3,14 @@ name = "locus-parser"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+onnx = ["dep:ort", "dep:ndarray"]
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+ort = { version = "=2.0.0-rc.12", features = ["download-binaries"], optional = true }
+ndarray = { version = "0.16", optional = true }
+
+[dev-dependencies]
+# nothing extra needed

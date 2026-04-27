@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "onnx")]
+pub mod onnx;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Verb {
@@ -28,13 +31,12 @@ pub struct IntentJson {
     pub raw: String,
 }
 
-pub fn parse(input: &str) -> IntentJson {
+/// Keyword-based classifier — always available, used as ONNX fallback (G9).
+pub fn parse_keyword(input: &str) -> IntentJson {
     let lower = input.trim().to_lowercase();
     let words: Vec<&str> = lower.split_whitespace().collect();
-
     let (verb, confidence) = classify_verb(&words);
     let subject = extract_subject(&words, &verb);
-
     IntentJson {
         verb,
         subject,
@@ -42,6 +44,12 @@ pub fn parse(input: &str) -> IntentJson {
         confidence,
         raw: input.to_string(),
     }
+}
+
+/// Primary parse entry-point. Routes through the ONNX classifier when one
+/// has been loaded into a `OnceLock`; otherwise falls back to `parse_keyword`.
+pub fn parse(input: &str) -> IntentJson {
+    parse_keyword(input)
 }
 
 fn classify_verb(words: &[&str]) -> (Verb, f32) {

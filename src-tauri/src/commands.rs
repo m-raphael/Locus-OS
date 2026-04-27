@@ -1,3 +1,4 @@
+use locus_agent::{AgentContext, AgentResult};
 use locus_parser::IntentJson;
 use spaces_core::{AttentionMode, Db, Flow, Module, SpaceSummary};
 use std::sync::Mutex;
@@ -40,6 +41,19 @@ pub fn set_space_mode(
         .unwrap()
         .update_space_mode(&space_id, mode)
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn run_agent(
+    db: State<AppDb>,
+    input: String,
+    active_space_id: Option<String>,
+) -> Result<AgentResult, String> {
+    let intent = locus_parser::parse(&input);
+    let ctx = AgentContext { intent, active_space_id };
+    let routed = locus_agent::route(&ctx);
+    let db = db.0.lock().unwrap();
+    locus_agent::execute(routed, &db).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

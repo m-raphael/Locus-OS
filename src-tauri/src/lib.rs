@@ -17,6 +17,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::run_agent,
             commands::parse_intent,
             commands::list_spaces,
             commands::create_space,

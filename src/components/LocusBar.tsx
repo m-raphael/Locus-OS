@@ -41,6 +41,13 @@ const HINT: React.CSSProperties = {
   userSelect: "none",
 };
 
+interface AgentResult {
+  action: { action: string };
+  confidence: number;
+  message: string;
+  new_space_id: string | null;
+}
+
 function applyModeToRoot(mode: AttentionMode) {
   document.getElementById("root")?.setAttribute("data-mode", mode);
 }
@@ -51,8 +58,8 @@ export default function LocusBar() {
   const { spaces, setSpaces, setActiveSpace, setBarFocused, isBarFocused, updateSpaceMode } =
     useLocusStore();
 
-  // Sync active-space mode to root data-mode attribute
   const activeId = useLocusStore((s) => s.activeSpaceId);
+
   useEffect(() => {
     const active = spaces.find((sp) => sp.id === activeId);
     applyModeToRoot(active?.attention_mode ?? "open");
@@ -79,34 +86,24 @@ export default function LocusBar() {
     const raw = value.trim();
     if (!raw) return;
 
-    const intent = await invoke<{
-      verb: string;
-      subject: string | null;
-      confidence: number;
-    }>("parse_intent", { input: raw });
+    const result = await invoke<AgentResult>("run_agent", {
+      input: raw,
+      activeSpaceId: activeId,
+    });
 
-    if (intent.verb === "open" || intent.verb === "unknown") {
-      const description = intent.subject ?? raw;
-      const spaceId = await invoke<string>("create_space", {
-        description,
-        mode: "open",
-        ephemeral: false,
-      });
-      // Auto-create default flow so Flows render immediately
-      await invoke("create_flow", { spaceId, orderIndex: 0 });
-      const updated = await invoke<SpaceSummary[]>("list_spaces");
-      setSpaces(updated);
-      setActiveSpace(spaceId);
+    // Refresh spaces from DB and sync UI state
+    const updated = await invoke<SpaceSummary[]>("list_spaces");
+    setSpaces(updated);
+
+    if (result.new_space_id) {
+      setActiveSpace(result.new_space_id);
     }
 
-    if (intent.verb === "mode" && intent.subject) {
-      const { activeSpaceId } = useLocusStore.getState();
-      if (activeSpaceId) {
-        const mode = intent.subject as AttentionMode;
-        await invoke("set_space_mode", { spaceId: activeSpaceId, mode });
-        updateSpaceMode(activeSpaceId, mode);
-        applyModeToRoot(mode);
-      }
+    // If the agent changed a mode, sync it to the active space in local state
+    if (result.action.action === "set_mode" && activeId) {
+      const action = result.action as { action: string; mode: string };
+      updateSpaceMode(activeId, action.mode as AttentionMode);
+      applyModeToRoot(action.mode as AttentionMode);
     }
 
     setValue("");
