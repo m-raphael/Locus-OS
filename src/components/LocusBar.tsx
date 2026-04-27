@@ -15,7 +15,7 @@ export default function LocusBar() {
   const [active, setActive] = useState(false);
   const [sel, setSel] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { activeSpaceLabel, activeSpaceId, accent, setSpaces, setActiveSpace, setBarFocused, updateSpaceMode, setSuggestedNext } = useLocusStore();
+  const { activeSpaceLabel, activeSpaceId, accent, setSpaces, setActiveSpace, setBarFocused, updateSpaceMode, setSuggestedNext, setLegacyAppContext } = useLocusStore();
 
   const suggestions = buildSuggestions(query);
 
@@ -77,6 +77,12 @@ export default function LocusBar() {
       setSuggestedNext(result.suggested_next);
       if (result.action.action === "set_mode" && activeSpaceId && result.action.mode) {
         updateSpaceMode(activeSpaceId, result.action.mode as never);
+      }
+      if (result.action.action === "launch_legacy_app") {
+        const a = result.action as { action: string; name: string; path: string };
+        setLegacyAppContext({ name: a.name, path: a.path });
+      } else {
+        setLegacyAppContext(null);
       }
     } catch (e) {
       // Backend unavailable in dev — still navigate to the space visually

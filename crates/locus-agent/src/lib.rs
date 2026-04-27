@@ -37,6 +37,10 @@ pub enum AgentAction {
     Noop {
         reason: String,
     },
+    LaunchLegacyApp {
+        name: String,
+        path: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -155,7 +159,9 @@ pub fn execute(mut result: AgentResult, db: &spaces_core::Db) -> Result<AgentRes
             let mode_enum = spaces_core::AttentionMode::from_str(mode);
             db.update_space_mode(space_id, mode_enum)?;
         }
-        AgentAction::FindSpace { .. } | AgentAction::Noop { .. } => {}
+        AgentAction::FindSpace { .. }
+        | AgentAction::Noop { .. }
+        | AgentAction::LaunchLegacyApp { .. } => {}
     }
     Ok(result)
 }

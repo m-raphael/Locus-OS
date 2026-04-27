@@ -2,6 +2,7 @@ use std::sync::Mutex;
 use tauri::Manager;
 
 mod commands;
+mod apps;
 use commands::AppDb;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -19,6 +20,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::run_agent,
             commands::backend_status,
+            commands::list_legacy_apps,
+            commands::launch_legacy_app,
+            commands::quit_legacy_app,
             commands::parse_intent,
             commands::list_spaces,
             commands::create_space,

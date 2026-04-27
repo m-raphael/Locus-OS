@@ -76,6 +76,7 @@ interface LocusStore {
   activeSpaceId: string | null;
   activeSpaceLabel: string | null;
   suggestedNext: string | null;
+  legacyAppContext: { name: string; path: string } | null;
   isBarFocused: boolean;
   flows: Record<string, Flow[]>;
   modules: Record<string, Module[]>;
@@ -86,6 +87,7 @@ interface LocusStore {
   setSpaces: (spaces: SpaceSummary[]) => void;
   setActiveSpace: (id: string | null, label: string | null) => void;
   setSuggestedNext: (s: string | null) => void;
+  setLegacyAppContext: (ctx: { name: string; path: string } | null) => void;
   setBarFocused: (v: boolean) => void;
   updateSpaceMode: (id: string, mode: AttentionMode) => void;
   removeSpace: (id: string) => void;
@@ -100,6 +102,7 @@ export const useLocusStore = create<LocusStore>((set) => ({
   activeSpaceId: null,
   activeSpaceLabel: null,
   suggestedNext: null,
+  legacyAppContext: null,
   isBarFocused: false,
   flows: {},
   modules: {},
@@ -110,6 +113,7 @@ export const useLocusStore = create<LocusStore>((set) => ({
   setSpaces: (spaces) => set({ spaces }),
   setActiveSpace: (id, label) => set({ activeSpaceId: id, activeSpaceLabel: label }),
   setSuggestedNext: (s) => set({ suggestedNext: s }),
+  setLegacyAppContext: (ctx) => set({ legacyAppContext: ctx }),
   setBarFocused: (v) => set({ isBarFocused: v }),
   updateSpaceMode: (id, mode) =>
     set((s) => ({

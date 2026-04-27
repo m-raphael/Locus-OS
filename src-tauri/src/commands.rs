@@ -1,4 +1,5 @@
-use locus_agent::{AgentResult, scheduler::BackendStatus};
+use crate::apps::{self, LegacyApp};
+use locus_agent::{AgentAction, AgentResult, scheduler::BackendStatus};
 use tauri::Manager;
 use locus_parser::IntentJson;
 use spaces_core::{AttentionMode, Db, Flow, Module, SpaceSummary};
@@ -51,6 +52,36 @@ pub fn run_agent(
     active_space_id: Option<String>,
     app: tauri::AppHandle,
 ) -> Result<AgentResult, String> {
+    // Legacy app intercept: "open <AppName>" → LaunchLegacyApp if found
+    let lower = input.trim().to_lowercase();
+    if lower.starts_with("open ") || lower.starts_with("launch ") {
+        let query = lower
+            .trim_start_matches("open ")
+            .trim_start_matches("launch ")
+            .trim();
+        let installed = apps::scan_applications();
+        if let Some(found) = apps::find_by_name(query, &installed) {
+            let _ = apps::launch_app(&found.path);
+            // Create a Space in DB to represent the legacy app context
+            let db_guard = db.0.lock().unwrap();
+            let intent_id = db_guard.create_intent(&found.name).map_err(|e| e.to_string())?;
+            let space_id = db_guard
+                .create_space(&intent_id, spaces_core::AttentionMode::Open, false)
+                .map_err(|e| e.to_string())?;
+            db_guard.add_flow(&space_id, 0).map_err(|e| e.to_string())?;
+            return Ok(AgentResult {
+                action: AgentAction::LaunchLegacyApp {
+                    name: found.name.clone(),
+                    path: found.path.clone(),
+                },
+                confidence: 0.95,
+                message: format!("Opening {}", found.name),
+                new_space_id: Some(space_id),
+                suggested_next: None,
+            });
+        }
+    }
+
     let nim_key = std::env::var("NVIDIA_API_KEY").ok();
     let model_path = app
         .path()
@@ -66,6 +97,21 @@ pub fn run_agent(
         model_path.as_deref(),
     )
     .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_legacy_apps() -> Vec<LegacyApp> {
+    apps::scan_applications()
+}
+
+#[tauri::command]
+pub fn launch_legacy_app(path: String) -> Result<(), String> {
+    apps::launch_app(&path)
+}
+
+#[tauri::command]
+pub fn quit_legacy_app(bundle_id: String) -> Result<(), String> {
+    apps::quit_app(&bundle_id)
 }
 
 #[tauri::command]

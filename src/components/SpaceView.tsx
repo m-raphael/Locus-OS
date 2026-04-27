@@ -5,11 +5,12 @@ import CalendarModule from "./modules/CalendarModule";
 import LiveModule from "./modules/LiveModule";
 import DocModule from "./modules/DocModule";
 import PredictiveModule from "./modules/PredictiveModule";
+import LegacyAppModule from "./modules/LegacyAppModule";
 
 const MODULE_MAP = { mail: MailModule, calendar: CalendarModule, live: LiveModule, doc: DocModule, predictive: PredictiveModule } as const;
 
 export default function SpaceView() {
-  const { activeSpaceLabel, accent } = useLocusStore();
+  const { activeSpaceLabel, accent, legacyAppContext } = useLocusStore();
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
 
   if (!activeSpaceLabel) return null;
@@ -50,16 +51,29 @@ export default function SpaceView() {
         }}
       >
         <div style={{ display: "flex", alignItems: "flex-start", gap: 24, padding: "8px 48px 32px 48px", minWidth: "max-content" }}>
+          {/* Legacy app module takes slot 0 when present */}
+          {legacyAppContext && (
+            <LegacyAppModule
+              idx={0}
+              accent={accent}
+              appName={legacyAppContext.name}
+              appPath={legacyAppContext.path}
+              focused={focusedIdx === -1}
+              anyFocused={focusedIdx !== null}
+              onFocus={(e) => { e.stopPropagation(); setFocusedIdx(-1); }}
+            />
+          )}
           {kinds.map((kind, i) => {
             const Mod = MODULE_MAP[kind];
+            const idx = legacyAppContext ? i + 1 : i;
             return (
               <Mod
                 key={i}
-                idx={i}
+                idx={idx}
                 accent={accent}
-                focused={focusedIdx === i}
+                focused={focusedIdx === idx}
                 anyFocused={focusedIdx !== null}
-                onFocus={(e) => { e.stopPropagation(); setFocusedIdx(i); }}
+                onFocus={(e) => { e.stopPropagation(); setFocusedIdx(idx); }}
               />
             );
           })}
