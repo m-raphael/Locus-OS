@@ -86,6 +86,7 @@ interface LocusStore {
   backendLabel: "NPU" | "NIM" | "KEY" | null;
   installedPluginIds: Set<string>;
   focusGoal: { id: string; name: string; description?: string } | null;
+  uiDensity: "compact" | "default" | "spacious";
 
   setSpaces: (spaces: SpaceSummary[]) => void;
   setActiveSpace: (id: string | null, label: string | null) => void;
@@ -100,6 +101,7 @@ interface LocusStore {
   setBackendLabel: (label: "NPU" | "NIM" | "KEY" | null) => void;
   setInstalledPluginIds: (ids: Set<string>) => void;
   setFocusGoal: (goal: { id: string; name: string; description?: string } | null) => void;
+  setUiDensity: (d: "compact" | "default" | "spacious") => void;
 }
 
 export const useLocusStore = create<LocusStore>((set) => ({
@@ -116,6 +118,7 @@ export const useLocusStore = create<LocusStore>((set) => ({
   backendLabel: null,
   installedPluginIds: new Set(),
   focusGoal: null,
+  uiDensity: (typeof window !== "undefined" && localStorage.getItem("locus-density") as "compact" | "default" | "spacious") || "default",
 
   setSpaces: (spaces) => set({ spaces }),
   setActiveSpace: (id, label) => set({ activeSpaceId: id, activeSpaceLabel: label }),
@@ -140,4 +143,8 @@ export const useLocusStore = create<LocusStore>((set) => ({
   setBackendLabel: (label) => set({ backendLabel: label }),
   setInstalledPluginIds: (ids) => set({ installedPluginIds: ids }),
   setFocusGoal: (goal) => set({ focusGoal: goal }),
+  setUiDensity: (d) => {
+    if (typeof window !== "undefined") localStorage.setItem("locus-density", d);
+    set({ uiDensity: d });
+  },
 }));

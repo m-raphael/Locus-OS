@@ -67,7 +67,7 @@ export default function SpaceView({ collab }: SpaceViewProps) {
           maskImage: "linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 24, padding: "8px 48px 32px 48px", minWidth: "max-content" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--density-module-gap)", padding: "8px 48px 32px 48px", minWidth: "max-content" }}>
           {/* Legacy app module takes slot 0 when present */}
           {legacyAppContext && (
             <LegacyAppModule

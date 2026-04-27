@@ -12,12 +12,16 @@ import GovernanceChip from "./components/GovernanceChip";
 import FocusGoalBar from "./components/FocusGoalBar";
 
 export default function App() {
-  const { isDark, accent, activeSpaceLabel, setBackendLabel } = useLocusStore();
+  const { isDark, accent, activeSpaceLabel, setBackendLabel, uiDensity } = useLocusStore();
   const collab = useCollabSession();
 
   useEffect(() => {
     document.getElementById("root")?.setAttribute("data-theme", isDark ? "dark" : "light");
   }, [isDark]);
+
+  useEffect(() => {
+    document.getElementById("root")?.setAttribute("data-density", uiDensity);
+  }, [uiDensity]);
 
   // Poll backend status once on mount (light — just a status read)
   useEffect(() => {

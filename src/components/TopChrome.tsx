@@ -1,7 +1,26 @@
 import { useLocusStore } from "../store";
 
 export default function TopChrome() {
-  const { activeSpaceLabel, accent, toggleTheme, isDark, backendLabel } = useLocusStore();
+  const { activeSpaceLabel, accent, toggleTheme, isDark, backendLabel, uiDensity, setUiDensity } = useLocusStore();
+
+  const densityIcon = {
+    compact: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="3" y="4" width="7" height="7" rx="1"/><rect x="14" y="4" width="7" height="7" rx="1"/>
+        <rect x="3" y="13" width="7" height="7" rx="1"/><rect x="14" y="13" width="7" height="7" rx="1"/>
+      </svg>
+    ),
+    default: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="4" y="4" width="16" height="6" rx="1"/><rect x="4" y="14" width="16" height="6" rx="1"/>
+      </svg>
+    ),
+    spacious: (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="5" y="5" width="14" height="4" rx="1"/><rect x="5" y="11" width="14" height="4" rx="1"/><rect x="5" y="17" width="14" height="4" rx="1"/>
+      </svg>
+    ),
+  };
 
   const backendColor: Record<string, string> = {
     NPU: "#34d399",  // emerald — local/fast
@@ -54,6 +73,19 @@ export default function TopChrome() {
         <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
           {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
         </span>
+        <button
+          onClick={() => setUiDensity(uiDensity === "default" ? "compact" : uiDensity === "compact" ? "spacious" : "default")}
+          title={`Density: ${uiDensity}`}
+          style={{
+            height: 36, width: 36, borderRadius: "50%", border: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "var(--glass-bg)", backdropFilter: "blur(20px)",
+            color: "var(--text)", boxShadow: "0 0 0 1px var(--glass-border)",
+            transition: `all 300ms var(--motion-ui)`,
+          }}
+        >
+          {densityIcon[uiDensity]}
+        </button>
         <button
           onClick={toggleTheme}
           style={{

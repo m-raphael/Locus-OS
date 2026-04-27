@@ -12,7 +12,7 @@ export interface ModuleProps {
 
 export function ModuleHeader({ kind, source, time }: { kind: string; source: string; time: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 28px 0" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "var(--density-header-pad)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, letterSpacing: "0.02em", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
         <span style={{
           display: "inline-flex", height: 20, width: 20, alignItems: "center", justifyContent: "center",
@@ -54,7 +54,7 @@ export default function ModuleShell({ idx, focused, anyFocused, accent, onFocus,
       <div
         onClick={onFocus}
         style={{
-          width: 360, minHeight: 440, borderRadius: "var(--module-radius)", flexShrink: 0,
+          width: "var(--density-module-width)", minHeight: "var(--density-module-minh)", borderRadius: "var(--module-radius)", flexShrink: 0,
           cursor: "pointer", position: "relative", overflow: "hidden",
           background: "var(--glass-bg)",
           backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
@@ -75,7 +75,7 @@ export default function ModuleShell({ idx, focused, anyFocused, accent, onFocus,
     <div
       onClick={onFocus}
       style={{
-        width: 360, minHeight: 440, borderRadius: "var(--module-radius)", flexShrink: 0,
+        width: "var(--density-module-width)", minHeight: "var(--density-module-minh)", borderRadius: "var(--module-radius)", flexShrink: 0,
         cursor: "pointer",
         background: focused ? "var(--glass-focused)" : "var(--glass-bg)",
         backdropFilter: "blur(28px) saturate(1.4)", WebkitBackdropFilter: "blur(28px) saturate(1.4)",

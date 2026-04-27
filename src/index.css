@@ -126,3 +126,34 @@ html, body, #root {
   0%, 100% { opacity: 0.6; }
   50%       { opacity: 1; }
 }
+
+/* ── Density tokens ── */
+:root, [data-density="default"] {
+  --density-module-width: 360px;
+  --density-module-minh: 440px;
+  --density-module-gap: 24px;
+  --density-header-pad: 24px 28px 0;
+  --density-body-pad: 16px 28px;
+  --density-list-pad: 12px 24px;
+  --density-font-scale: 1;
+}
+
+[data-density="compact"] {
+  --density-module-width: 320px;
+  --density-module-minh: 380px;
+  --density-module-gap: 16px;
+  --density-header-pad: 18px 22px 0;
+  --density-body-pad: 12px 22px;
+  --density-list-pad: 8px 18px;
+  --density-font-scale: 0.94;
+}
+
+[data-density="spacious"] {
+  --density-module-width: 420px;
+  --density-module-minh: 500px;
+  --density-module-gap: 32px;
+  --density-header-pad: 30px 36px 0;
+  --density-body-pad: 20px 36px;
+  --density-list-pad: 16px 30px;
+  --density-font-scale: 1.04;
+}
