@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, KeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useLocusStore, AttentionMode } from "../store";
+import { useLocusStore, AttentionMode, SpaceSummary } from "../store";
 
 const BAR: React.CSSProperties = {
   position: "fixed",
@@ -41,11 +41,22 @@ const HINT: React.CSSProperties = {
   userSelect: "none",
 };
 
+function applyModeToRoot(mode: AttentionMode) {
+  document.getElementById("root")?.setAttribute("data-mode", mode);
+}
+
 export default function LocusBar() {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const { setSpaces, setActiveSpace, setBarFocused, isBarFocused } =
+  const { spaces, setSpaces, setActiveSpace, setBarFocused, isBarFocused, updateSpaceMode } =
     useLocusStore();
+
+  // Sync active-space mode to root data-mode attribute
+  const activeId = useLocusStore((s) => s.activeSpaceId);
+  useEffect(() => {
+    const active = spaces.find((sp) => sp.id === activeId);
+    applyModeToRoot(active?.attention_mode ?? "open");
+  }, [activeId, spaces]);
 
   useEffect(() => {
     const handler = (e: globalThis.KeyboardEvent) => {
@@ -81,21 +92,20 @@ export default function LocusBar() {
         mode: "open",
         ephemeral: false,
       });
-      const spaces = await invoke<typeof import("../store").SpaceSummary[]>(
-        "list_spaces"
-      );
-      setSpaces(spaces as never);
+      // Auto-create default flow so Flows render immediately
+      await invoke("create_flow", { spaceId, orderIndex: 0 });
+      const updated = await invoke<SpaceSummary[]>("list_spaces");
+      setSpaces(updated);
       setActiveSpace(spaceId);
     }
 
     if (intent.verb === "mode" && intent.subject) {
-      const { activeSpaceId, updateSpaceMode } = useLocusStore.getState();
+      const { activeSpaceId } = useLocusStore.getState();
       if (activeSpaceId) {
-        await invoke("set_space_mode", {
-          spaceId: activeSpaceId,
-          mode: intent.subject as AttentionMode,
-        });
-        updateSpaceMode(activeSpaceId, intent.subject as AttentionMode);
+        const mode = intent.subject as AttentionMode;
+        await invoke("set_space_mode", { spaceId: activeSpaceId, mode });
+        updateSpaceMode(activeSpaceId, mode);
+        applyModeToRoot(mode);
       }
     }
 

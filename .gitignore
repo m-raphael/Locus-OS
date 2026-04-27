@@ -1,0 +1,29 @@
+# OS
+.DS_Store
+
+# Node/Frontend
+node_modules/
+dist/
+build/
+.npm/
+
+# Rust/Tauri
+target/
+src-tauri/target/
+**/*.rs.bk
+
+# Environment & Secrets
+.env
+.env.*.local
+*.pem
+*.sqlite
+*.sqlite3
+
+# AI & Editor Files (Keep these out of the public repo)
+.claude/
+.cursor/
+.cursorrules
+CLAUDE.md
+commands.md
+MEMORY.md
+CONTEXT.md

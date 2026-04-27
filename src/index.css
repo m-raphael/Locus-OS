@@ -7,7 +7,12 @@
   --fog-radius-bar: 40px;
   --motion-duration: 400ms;
   --motion-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --mode-tint: transparent;
 }
+
+[data-mode="focus"]    { --mode-tint: rgba(100, 80, 220, 0.10); }
+[data-mode="recovery"] { --mode-tint: rgba(220, 160, 80, 0.08); }
+[data-mode="mirror"]   { --mode-tint: rgba(180, 210, 230, 0.10); }
 
 *,
 *::before,
@@ -27,4 +32,14 @@ body,
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
     system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+#root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: var(--mode-tint);
+  pointer-events: none;
+  transition: background var(--motion-duration) var(--motion-ease);
+  z-index: 0;
 }

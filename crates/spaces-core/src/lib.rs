@@ -191,6 +191,39 @@ impl Db {
         Ok(())
     }
 
+    pub fn list_flows(&self, space_id: &str) -> Result<Vec<Flow>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, space_id, order_index FROM flows \
+             WHERE space_id = ?1 ORDER BY order_index",
+        )?;
+        let rows = stmt.query_map(params![space_id], |row| {
+            Ok(Flow {
+                id: row.get(0)?,
+                space_id: row.get(1)?,
+                order_index: row.get(2)?,
+            })
+        })?;
+        rows.collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(SpacesError::Db)
+    }
+
+    pub fn list_modules(&self, flow_id: &str) -> Result<Vec<Module>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, flow_id, component_type, props_json FROM modules \
+             WHERE flow_id = ?1",
+        )?;
+        let rows = stmt.query_map(params![flow_id], |row| {
+            Ok(Module {
+                id: row.get(0)?,
+                flow_id: row.get(1)?,
+                component_type: row.get(2)?,
+                props_json: row.get(3)?,
+            })
+        })?;
+        rows.collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(SpacesError::Db)
+    }
+
     pub fn delete_ephemeral_space(&self, id: &str) -> Result<()> {
         self.conn.execute(
             "DELETE FROM spaces WHERE id = ?1 AND is_ephemeral = 1",

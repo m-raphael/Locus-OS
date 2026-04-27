@@ -21,6 +21,11 @@ pub fn run() {
             commands::list_spaces,
             commands::create_space,
             commands::set_space_mode,
+            commands::dismiss_space,
+            commands::list_flows,
+            commands::create_flow,
+            commands::list_modules,
+            commands::create_module,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Locus");

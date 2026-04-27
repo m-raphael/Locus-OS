@@ -1,5 +1,5 @@
 use locus_parser::IntentJson;
-use spaces_core::{AttentionMode, Db, SpaceSummary};
+use spaces_core::{AttentionMode, Db, Flow, Module, SpaceSummary};
 use std::sync::Mutex;
 use tauri::State;
 
@@ -39,5 +39,54 @@ pub fn set_space_mode(
     db.0.lock()
         .unwrap()
         .update_space_mode(&space_id, mode)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn dismiss_space(db: State<AppDb>, space_id: String) -> Result<(), String> {
+    db.0.lock()
+        .unwrap()
+        .delete_ephemeral_space(&space_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_flows(db: State<AppDb>, space_id: String) -> Result<Vec<Flow>, String> {
+    db.0.lock()
+        .unwrap()
+        .list_flows(&space_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn create_flow(
+    db: State<AppDb>,
+    space_id: String,
+    order_index: i64,
+) -> Result<String, String> {
+    db.0.lock()
+        .unwrap()
+        .add_flow(&space_id, order_index)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn list_modules(db: State<AppDb>, flow_id: String) -> Result<Vec<Module>, String> {
+    db.0.lock()
+        .unwrap()
+        .list_modules(&flow_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn create_module(
+    db: State<AppDb>,
+    flow_id: String,
+    component_type: String,
+    props_json: String,
+) -> Result<String, String> {
+    db.0.lock()
+        .unwrap()
+        .add_module(&flow_id, &component_type, &props_json)
         .map_err(|e| e.to_string())
 }
