@@ -3,7 +3,6 @@
 /// Used for AI-backed intent classification and multi-step reasoning.
 /// Falls back gracefully to the keyword classifier when the API key is
 /// absent or the endpoint is unreachable (offline-first guarantee).
-use crate::AgentError;
 use locus_parser::{IntentJson, Verb};
 use serde::{Deserialize, Serialize};
 

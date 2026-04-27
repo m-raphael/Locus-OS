@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, KeyboardEvent } from "react";
+import { useEffect, useRef, useState, KeyboardEvent, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useLocusStore, buildSuggestions, Suggestion, SpaceSummary } from "../store";
+import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 
 interface AgentResult {
   action: { action: string; mode?: string };
@@ -17,6 +18,29 @@ export default function LocusBar() {
   const { activeSpaceLabel, activeSpaceId, accent, setSpaces, setActiveSpace, setBarFocused, updateSpaceMode, setSuggestedNext } = useLocusStore();
 
   const suggestions = buildSuggestions(query);
+
+  // Voice: final speech result → submit as raw text intent
+  const runText = useCallback(async (text: string) => {
+    setQuery("");
+    setActive(false);
+    inputRef.current?.blur();
+    try {
+      const result = await invoke<AgentResult>("run_agent", { input: text, activeSpaceId });
+      const updated = await invoke<SpaceSummary[]>("list_spaces");
+      setSpaces(updated);
+      if (result.new_space_id) setActiveSpace(result.new_space_id, text);
+      setSuggestedNext(result.suggested_next);
+      if (result.action.action === "set_mode" && activeSpaceId && result.action.mode)
+        updateSpaceMode(activeSpaceId, result.action.mode as never);
+    } catch {
+      setActiveSpace("preview-" + Date.now(), text);
+    }
+  }, [activeSpaceId, setSpaces, setActiveSpace, setSuggestedNext, updateSpaceMode]);
+
+  const { state: micState, isSupported: micSupported, toggle: toggleMic } = useSpeechRecognition({
+    onFinalResult: runText,
+    onInterimResult: (t) => { setQuery(t); setActive(false); },
+  });
 
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -146,6 +170,44 @@ export default function LocusBar() {
             caretColor: accent, fontFamily: "var(--font-sans)",
           }}
         />
+        {/* Mic button */}
+        {micSupported && (
+          <button
+            onClick={toggleMic}
+            title={micState === "listening" ? "Stop listening" : "Voice input"}
+            style={{
+              height: 28, width: 28, borderRadius: "50%", border: "none", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              background: micState === "listening" ? accent : "var(--chip-bg)",
+              color: micState === "listening" ? "#fff" : "var(--muted)",
+              boxShadow: micState === "listening" ? `0 0 12px ${accent}88` : "none",
+              transition: `all 300ms var(--motion-ui)`,
+            }}
+          >
+            {micState === "listening" ? (
+              // Animated bars when listening
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <rect x="0" y="3" width="2" height="6" rx="1" opacity="0.6">
+                  <animate attributeName="height" values="6;10;6" dur="0.6s" repeatCount="indefinite"/>
+                  <animate attributeName="y" values="3;1;3" dur="0.6s" repeatCount="indefinite"/>
+                </rect>
+                <rect x="5" y="1" width="2" height="10" rx="1">
+                  <animate attributeName="height" values="10;5;10" dur="0.6s" begin="0.15s" repeatCount="indefinite"/>
+                  <animate attributeName="y" values="1;3.5;1" dur="0.6s" begin="0.15s" repeatCount="indefinite"/>
+                </rect>
+                <rect x="10" y="3" width="2" height="6" rx="1" opacity="0.6">
+                  <animate attributeName="height" values="6;10;6" dur="0.6s" begin="0.3s" repeatCount="indefinite"/>
+                  <animate attributeName="y" values="3;1;3" dur="0.6s" begin="0.3s" repeatCount="indefinite"/>
+                </rect>
+              </svg>
+            ) : (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <rect x="9" y="2" width="6" height="12" rx="3"/>
+                <path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6"/>
+              </svg>
+            )}
+          </button>
+        )}
         {/* Hint */}
         <kbd style={{
           padding: "2px 6px", borderRadius: 6, fontSize: 10,
