@@ -81,6 +81,7 @@ interface LocusStore {
   modules: Record<string, Module[]>;
   isDark: boolean;
   accent: string;
+  backendLabel: "NPU" | "NIM" | "KEY" | null;
 
   setSpaces: (spaces: SpaceSummary[]) => void;
   setActiveSpace: (id: string | null, label: string | null) => void;
@@ -91,6 +92,7 @@ interface LocusStore {
   setFlows: (spaceId: string, flows: Flow[]) => void;
   setModules: (flowId: string, modules: Module[]) => void;
   toggleTheme: () => void;
+  setBackendLabel: (label: "NPU" | "NIM" | "KEY" | null) => void;
 }
 
 export const useLocusStore = create<LocusStore>((set) => ({
@@ -103,6 +105,7 @@ export const useLocusStore = create<LocusStore>((set) => ({
   modules: {},
   isDark: false,
   accent: "#7c7cf2",
+  backendLabel: null,
 
   setSpaces: (spaces) => set({ spaces }),
   setActiveSpace: (id, label) => set({ activeSpaceId: id, activeSpaceLabel: label }),
@@ -123,4 +126,5 @@ export const useLocusStore = create<LocusStore>((set) => ({
   setModules: (flowId, modules) =>
     set((s) => ({ modules: { ...s.modules, [flowId]: modules } })),
   toggleTheme: () => set((s) => ({ isDark: !s.isDark })),
+  setBackendLabel: (label) => set({ backendLabel: label }),
 }));

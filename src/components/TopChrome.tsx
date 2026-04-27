@@ -1,7 +1,13 @@
 import { useLocusStore } from "../store";
 
 export default function TopChrome() {
-  const { activeSpaceLabel, accent, toggleTheme, isDark } = useLocusStore();
+  const { activeSpaceLabel, accent, toggleTheme, isDark, backendLabel } = useLocusStore();
+
+  const backendColor: Record<string, string> = {
+    NPU: "#34d399",  // emerald — local/fast
+    NIM: accent,     // accent periwinkle — cloud AI
+    KEY: "rgba(128,128,128,0.5)", // muted — keyword only
+  };
 
   return (
     <div style={{
@@ -25,6 +31,22 @@ export default function TopChrome() {
           <span style={{ height: 6, width: 6, borderRadius: "50%", background: accent, boxShadow: `0 0 8px ${accent}`, display: "inline-block" }}/>
           active space — {activeSpaceLabel || "none"}
         </div>
+        {backendLabel && (
+          <div style={{
+            marginLeft: 12, display: "flex", alignItems: "center", gap: 6,
+            padding: "3px 10px", borderRadius: 999,
+            background: "var(--chip-bg)", fontSize: 10,
+            fontFamily: "var(--font-mono)", letterSpacing: "0.12em",
+            color: backendColor[backendLabel] ?? "var(--muted)",
+          }}>
+            <span style={{
+              height: 5, width: 5, borderRadius: "50%",
+              background: backendColor[backendLabel] ?? "var(--muted)",
+              boxShadow: backendLabel !== "KEY" ? `0 0 6px ${backendColor[backendLabel]}` : "none",
+            }}/>
+            {backendLabel}
+          </div>
+        )}
       </div>
 
       {/* Right: clock + theme toggle */}

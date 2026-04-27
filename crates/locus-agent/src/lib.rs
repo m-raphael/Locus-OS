@@ -1,4 +1,5 @@
 pub mod nim;
+pub mod scheduler;
 
 use locus_parser::{IntentJson, Verb};
 use serde::{Deserialize, Serialize};
@@ -171,24 +172,30 @@ fn noop(reason: &str, confidence: f32) -> AgentResult {
     }
 }
 
-/// Top-level entrypoint: parse → (NIM classify if key present) → route → execute.
+/// Top-level entrypoint: scheduler selects backend → classify → route → execute.
 ///
-/// `nim_api_key` is `Some(key)` when the user has set `NVIDIA_API_KEY`.
-/// When absent or on network error, falls back to the keyword classifier.
+/// Backend priority: NPU (local model file) > NIM (API key + network) > Keyword
 pub fn run(
     input: &str,
     active_space_id: Option<String>,
     db: &spaces_core::Db,
     nim_api_key: Option<&str>,
+    npu_model_path: Option<&std::path::Path>,
 ) -> Result<AgentResult> {
-    // Try NIM first, fall back to keyword parser
-    let (intent, suggested_from_ai) = if let Some(key) = nim_api_key {
-        match nim::classify(input, key) {
+    let backend = scheduler::select(nim_api_key, npu_model_path);
+
+    let (intent, suggested_from_ai) = match backend {
+        scheduler::Backend::Npu => {
+            // Core ML / Metal inference stub.
+            // Place a locus-intent.mlmodel in the app data dir to activate.
+            // Until then, falls through to keyword (same privacy guarantee).
+            (locus_parser::parse(input), None)
+        }
+        scheduler::Backend::Nim => match nim_api_key.and_then(|k| nim::classify(input, k)) {
             Some(ai) => (ai.intent, ai.suggested_next),
             None => (locus_parser::parse(input), None),
-        }
-    } else {
-        (locus_parser::parse(input), None)
+        },
+        scheduler::Backend::Keyword => (locus_parser::parse(input), None),
     };
 
     let ctx = AgentContext { intent, active_space_id };

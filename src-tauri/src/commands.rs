@@ -1,4 +1,5 @@
-use locus_agent::AgentResult;
+use locus_agent::{AgentResult, scheduler::BackendStatus};
+use tauri::Manager;
 use locus_parser::IntentJson;
 use spaces_core::{AttentionMode, Db, Flow, Module, SpaceSummary};
 use std::sync::Mutex;
@@ -48,11 +49,34 @@ pub fn run_agent(
     db: State<AppDb>,
     input: String,
     active_space_id: Option<String>,
+    app: tauri::AppHandle,
 ) -> Result<AgentResult, String> {
     let nim_key = std::env::var("NVIDIA_API_KEY").ok();
+    let model_path = app
+        .path()
+        .app_data_dir()
+        .ok()
+        .map(|d| d.join("models").join("locus-intent.mlmodel"));
     let db = db.0.lock().unwrap();
-    locus_agent::run(&input, active_space_id, &db, nim_key.as_deref())
-        .map_err(|e| e.to_string())
+    locus_agent::run(
+        &input,
+        active_space_id,
+        &db,
+        nim_key.as_deref(),
+        model_path.as_deref(),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn backend_status(app: tauri::AppHandle) -> BackendStatus {
+    let nim_key = std::env::var("NVIDIA_API_KEY").ok();
+    let model_path = app
+        .path()
+        .app_data_dir()
+        .ok()
+        .map(|d| d.join("models").join("locus-intent.mlmodel"));
+    locus_agent::scheduler::status(nim_key.as_deref(), model_path.as_deref())
 }
 
 #[tauri::command]
