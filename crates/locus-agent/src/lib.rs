@@ -42,6 +42,7 @@ pub enum AgentAction {
     LaunchLegacyApp {
         name: String,
         path: String,
+        bundle_id: String,
     },
 }
 

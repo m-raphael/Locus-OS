@@ -1,7 +1,16 @@
+import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useLocusStore } from "../store";
 
 export default function SpaceRail() {
-  const { activeSpaceLabel, accent, spaces } = useLocusStore();
+  const { activeSpaceId, accent, spaces, setActiveSpace, removeSpace } = useLocusStore();
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  const dismiss = (e: React.MouseEvent, spaceId: string) => {
+    e.stopPropagation();
+    invoke("dismiss_space", { spaceId }).catch(() => {});
+    removeSpace(spaceId);
+  };
 
   return (
     <div style={{
@@ -17,18 +26,25 @@ export default function SpaceRail() {
       <div style={{ padding: "8px 12px 4px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.16em", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
         Spaces
       </div>
-      {(spaces.length > 0 ? spaces : []).map((s) => {
-        const active = s.description === activeSpaceLabel;
+      {spaces.map((s) => {
+        const active = s.id === activeSpaceId;
+        const hovered = hoveredId === s.id;
         return (
-          <div key={s.id} style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "8px 12px",
-            borderRadius: 14,
-            background: active ? "var(--dropdown-row-active)" : "transparent",
-            color: active ? "var(--text)" : "var(--muted)",
-            cursor: "default",
-            transition: `all 300ms var(--motion-ui)`,
-          }}>
+          <div
+            key={s.id}
+            onClick={() => setActiveSpace(s.id, s.description)}
+            onMouseEnter={() => setHoveredId(s.id)}
+            onMouseLeave={() => setHoveredId(null)}
+            style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "8px 12px",
+              borderRadius: 14,
+              background: active ? "var(--dropdown-row-active)" : hovered ? "var(--chip-bg)" : "transparent",
+              color: active ? "var(--text)" : "var(--muted)",
+              cursor: "pointer",
+              transition: `all 300ms var(--motion-ui)`,
+            }}
+          >
             <span style={{
               height: 6, width: 6, borderRadius: "50%", flexShrink: 0,
               background: active ? accent : s.is_ephemeral ? "rgba(128,128,128,0.15)" : "rgba(128,128,128,0.3)",
@@ -36,7 +52,20 @@ export default function SpaceRail() {
               border: s.is_ephemeral ? "1.5px dashed rgba(128,128,128,0.4)" : "none",
               transition: `all 300ms var(--motion-ui)`,
             }}/>
-            <span style={{ fontSize: 12, letterSpacing: "-0.005em", minWidth: 130, opacity: s.is_ephemeral ? 0.7 : 1 }}>{s.description}</span>
+            <span style={{ fontSize: 12, letterSpacing: "-0.005em", minWidth: 120, opacity: s.is_ephemeral ? 0.7 : 1 }}>
+              {s.description}
+            </span>
+            <button
+              onClick={(e) => dismiss(e, s.id)}
+              title="Dismiss space"
+              style={{
+                marginLeft: "auto", background: "none", border: "none",
+                cursor: "pointer", color: "var(--muted)", fontSize: 14,
+                padding: "0 2px", lineHeight: 1, flexShrink: 0,
+                opacity: hovered ? 1 : 0,
+                transition: "opacity 150ms",
+              }}
+            >×</button>
           </div>
         );
       })}

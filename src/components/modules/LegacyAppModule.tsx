@@ -4,6 +4,7 @@ import ModuleShell, { ModuleAction, ModuleProps } from "./ModuleShell";
 interface Props extends Omit<ModuleProps, "children"> {
   appName: string;
   appPath: string;
+  bundleId: string;
 }
 
 // Deterministic colour from app name for the letter avatar
@@ -14,12 +15,13 @@ function nameColor(name: string): string {
   return `oklch(62% 0.13 ${hues[hash % hues.length]})`;
 }
 
-export default function LegacyAppModule({ appName, appPath, ...props }: Props) {
+export default function LegacyAppModule({ appName, appPath, bundleId, ...props }: Props) {
   const { accent } = props;
   const color = nameColor(appName);
   const initial = appName.charAt(0).toUpperCase();
 
   const launch = () => invoke("launch_legacy_app", { path: appPath }).catch(() => null);
+  const quit = () => invoke("quit_legacy_app", { bundleId }).catch(() => null);
 
   return (
     <ModuleShell {...props}>
@@ -56,6 +58,7 @@ export default function LegacyAppModule({ appName, appPath, ...props }: Props) {
         <div style={{ marginTop: 24, display: "flex", gap: 8 }}>
           <ModuleAction primary accent={accent} onClick={launch}>Activate</ModuleAction>
           <ModuleAction accent={accent} onClick={launch}>Re-launch</ModuleAction>
+          <ModuleAction accent={accent} onClick={quit}>Quit</ModuleAction>
         </div>
 
         <div style={{ marginTop: 16, fontSize: 11, color: "var(--muted)", fontFamily: "var(--font-mono)", letterSpacing: "0.04em" }}>

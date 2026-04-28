@@ -130,8 +130,8 @@ export default function LocusBar() {
         updateSpaceMode(activeSpaceId, result.action.mode as never);
       }
       if (result.action.action === "launch_legacy_app") {
-        const a = result.action as { action: string; name: string; path: string };
-        setLegacyAppContext({ name: a.name, path: a.path });
+        const a = result.action as { action: string; name: string; path: string; bundle_id: string };
+        setLegacyAppContext({ name: a.name, path: a.path, bundleId: a.bundle_id ?? "" });
       } else {
         setLegacyAppContext(null);
       }

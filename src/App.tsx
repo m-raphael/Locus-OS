@@ -26,7 +26,10 @@ export default function App() {
   // Poll backend status once on mount (light — just a status read)
   useEffect(() => {
     invoke<{ selected: string }>("backend_status")
-      .then((s) => setBackendLabel(s.selected.toUpperCase() as "NPU" | "NIM" | "KEY"))
+      .then((s) => {
+        const label = s.selected === "keyword" ? "KEY" : s.selected.toUpperCase() as "NPU" | "NIM";
+        setBackendLabel(label);
+      })
       .catch(() => setBackendLabel("KEY"));
   }, [setBackendLabel]);
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import ModuleShell, { ModuleHeader, ModuleAction, ModuleProps } from "./ModuleShell";
+import { useLocusStore, SpaceSummary } from "../../store";
 
 interface PredictedSpace {
   description: string;
@@ -10,6 +11,7 @@ interface PredictedSpace {
 
 export default function PredictiveModule(props: Omit<ModuleProps, "children">) {
   const { idx, accent, focused, anyFocused, onFocus } = props;
+  const { setSpaces, setActiveSpace } = useLocusStore();
   const [predictions, setPredictions] = useState<PredictedSpace[]>([]);
   const [hour, setHour] = useState(new Date().getHours());
   const [loading, setLoading] = useState(true);
@@ -39,18 +41,20 @@ export default function PredictiveModule(props: Omit<ModuleProps, "children">) {
 
   async function activatePrediction(description: string) {
     try {
-      await invoke("create_space", {
+      const spaceId = await invoke<string>("create_space", {
         description,
         mode: "open",
         ephemeral: false,
       });
-      // Record visit immediately
       const now = new Date();
       await invoke("record_visit", {
         description,
         visitedAt: Math.floor(now.getTime() / 1000),
         hourOfDay: now.getHours(),
       });
+      const updated = await invoke<SpaceSummary[]>("list_spaces");
+      setSpaces(updated);
+      setActiveSpace(spaceId, description);
       loadPredictions();
     } catch (e) {
       console.error("activatePrediction failed:", e);

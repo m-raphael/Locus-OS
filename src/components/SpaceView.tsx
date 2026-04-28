@@ -76,6 +76,7 @@ export default function SpaceView({ collab }: SpaceViewProps) {
               accent={accent}
               appName={legacyAppContext.name}
               appPath={legacyAppContext.path}
+              bundleId={legacyAppContext.bundleId}
               focused={focusedIdx === -1}
               anyFocused={focusedIdx !== null}
               onFocus={(e) => { e.stopPropagation(); setFocusedIdx(-1); }}

@@ -96,6 +96,7 @@ pub fn run_agent(
                 action: AgentAction::LaunchLegacyApp {
                     name: found.name.clone(),
                     path: found.path.clone(),
+                    bundle_id: found.bundle_id.clone(),
                 },
                 confidence: 0.95,
                 message: format!("Opening {}", found.name),
