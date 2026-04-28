@@ -1,7 +1,14 @@
+import { useEffect, useState } from "react";
 import { useLocusStore } from "../store";
 
 export default function TopChrome() {
   const { activeSpaceLabel, accent, toggleTheme, isDark, backendLabel, uiDensity, setUiDensity } = useLocusStore();
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const densityIcon = {
     compact: (
@@ -71,7 +78,7 @@ export default function TopChrome() {
       {/* Right: clock + theme toggle */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
-          {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+          {now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
         </span>
         <button
           onClick={() => setUiDensity(uiDensity === "default" ? "compact" : uiDensity === "compact" ? "spacious" : "default")}
