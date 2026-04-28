@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useLocusStore, modulesForSpace } from "../store";
+import { useLocusStore, Flow, modulesForSpace } from "../store";
+import FlowRow from "./FlowRow";
 import { useCollabSession } from "./CollabBar";
 import MailModule from "./modules/MailModule";
 import CalendarModule from "./modules/CalendarModule";
@@ -17,9 +18,8 @@ const MODULE_MAP = { mail: MailModule, calendar: CalendarModule, live: LiveModul
 interface SpaceViewProps { collab: ReturnType<typeof useCollabSession>; }
 
 export default function SpaceView({ collab }: SpaceViewProps) {
-  const { activeSpaceLabel, accent, legacyAppContext } = useLocusStore();
+  const { activeSpaceLabel, activeSpaceId, accent, legacyAppContext, flows, setFlows } = useLocusStore();
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
-
   // Record visit for predictive spaces
   useEffect(() => {
     if (!activeSpaceLabel) return;
@@ -31,8 +31,17 @@ export default function SpaceView({ collab }: SpaceViewProps) {
     }).catch(() => {});
   }, [activeSpaceLabel]);
 
+  // Load flows when space changes
+  useEffect(() => {
+    if (!activeSpaceId) return;
+    invoke<Flow[]>("list_flows", { spaceId: activeSpaceId }).then((f) => {
+      setFlows(activeSpaceId, f);
+    }).catch(() => {});
+  }, [activeSpaceId, setFlows]);
+
   if (!activeSpaceLabel) return null;
 
+  const spaceFlows = activeSpaceId ? (flows[activeSpaceId] ?? []) : [];
   const kinds = modulesForSpace(activeSpaceLabel);
 
   return (
@@ -47,6 +56,8 @@ export default function SpaceView({ collab }: SpaceViewProps) {
           <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
             <span>{kinds.length} modules</span>
             <span>·</span>
+            <span>{spaceFlows.length} flows</span>
+            <span>·</span>
             <span>updated just now</span>
             <span>·</span>
             <span style={{ color: accent }}>● live</span>
@@ -58,7 +69,16 @@ export default function SpaceView({ collab }: SpaceViewProps) {
         </div>
       </div>
 
-      {/* Horizontal flow */}
+      {/* Flows — DB-backed horizontal rows */}
+      {spaceFlows.length > 0 && (
+        <div style={{ padding: "0 48px 24px", display: "flex", flexDirection: "column", gap: 20 }}>
+          {spaceFlows.map((flow) => (
+            <FlowRow key={flow.id} flow={flow} />
+          ))}
+        </div>
+      )}
+
+      {/* Horizontal flow — module cards */}
       <div
         onClick={() => setFocusedIdx(null)}
         style={{
