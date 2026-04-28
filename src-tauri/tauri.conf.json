@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; connect-src 'self' https://integrate.api.nvidia.com stun:stun.l.google.com:19302; img-src 'self' data:; style-src 'self' 'unsafe-inline'; media-src 'self'"
     }
   },
   "bundle": {

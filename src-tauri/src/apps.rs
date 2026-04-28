@@ -65,10 +65,20 @@ pub fn launch_app(path: &str) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Validate that a bundle ID is a well-formed reverse-DNS identifier
+/// (e.g., "com.example.App"). Only allows alphanumeric, dots, and hyphens.
+fn is_valid_bundle_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 256
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-')
+}
+
 /// Quit a running app by bundle ID via osascript.
 pub fn quit_app(bundle_id: &str) -> Result<(), String> {
-    if bundle_id.is_empty() {
-        return Err("empty bundle id".into());
+    if !is_valid_bundle_id(bundle_id) {
+        return Err(format!("invalid bundle id: {bundle_id}"));
     }
     let script = format!(r#"tell application id "{bundle_id}" to quit"#);
     let status = Command::new("osascript")
