@@ -13,6 +13,10 @@ interface PluginManifest {
   permissions: string[];
   homepage: string | null;
 }
+interface InstalledPluginMeta {
+  id: string;
+  enabled: boolean;
+}
 
 // Risk level by permission key
 function permRisk(p: string): "high" | "med" | "low" {
@@ -56,6 +60,7 @@ const PERMISSION_DESCRIPTIONS: Record<string, string> = {
 export default function MarketplaceModule({ idx, accent, focused, anyFocused, onFocus }: Props) {
   const { installedPluginIds, setInstalledPluginIds } = useLocusStore();
   const [catalog, setCatalog] = useState<PluginManifest[]>([]);
+  const [enabledPluginIds, setEnabledPluginIds] = useState<Set<string>>(new Set());
   const [justInstalled, setJustInstalled] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -63,10 +68,11 @@ export default function MarketplaceModule({ idx, accent, focused, anyFocused, on
   async function loadCatalog() {
     const [all, installed] = await Promise.all([
       invoke<PluginManifest[]>("list_marketplace"),
-      invoke<{ id: string }[]>("list_installed_plugins").catch(() => [] as { id: string }[]),
+      invoke<InstalledPluginMeta[]>("list_installed_plugins").catch(() => [] as InstalledPluginMeta[]),
     ]);
     setCatalog(all);
     setInstalledPluginIds(new Set(installed.map((p) => p.id)));
+    setEnabledPluginIds(new Set(installed.filter((p) => p.enabled).map((p) => p.id)));
   }
 
   useEffect(() => { loadCatalog(); }, []);
@@ -83,6 +89,21 @@ export default function MarketplaceModule({ idx, accent, focused, anyFocused, on
         setJustInstalled(id);
         setTimeout(() => setJustInstalled(null), 1200);
       }
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function toggleEnabled(id: string) {
+    setBusy(id);
+    try {
+      const next = !enabledPluginIds.has(id);
+      await invoke("set_plugin_enabled", { id, enabled: next });
+      setEnabledPluginIds((prev) => {
+        const nextSet = new Set(prev);
+        if (next) nextSet.add(id); else nextSet.delete(id);
+        return nextSet;
+      });
     } finally {
       setBusy(null);
     }
@@ -183,21 +204,39 @@ export default function MarketplaceModule({ idx, accent, focused, anyFocused, on
                   </div>
 
                   {/* Install / Remove */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); if (!isBusy) toggle(plugin.id); }}
-                    style={{
-                      flexShrink: 0, alignSelf: "center",
-                      fontSize: 11, fontFamily: "var(--font-mono)",
-                      padding: "5px 11px", borderRadius: 999,
-                      border: isInstalled ? "1px solid var(--border)" : `1px solid ${accent}55`,
-                      background: isInstalled ? "transparent" : `${accent}18`,
-                      color: isInstalled ? "var(--muted)" : accent,
-                      cursor: isBusy ? "wait" : "pointer",
-                      transition: "all 200ms var(--motion-ui)",
-                    }}
-                  >
-                    {isBusy ? "…" : isInstalled ? "Remove" : "Install"}
-                  </button>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0 }}>
+                    {isInstalled && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (!isBusy) toggleEnabled(plugin.id); }}
+                        title={enabledPluginIds.has(plugin.id) ? "Disable" : "Enable"}
+                        style={{
+                          fontSize: 10, fontFamily: "var(--font-mono)",
+                          padding: "2px 8px", borderRadius: 999,
+                          border: enabledPluginIds.has(plugin.id) ? "1px solid var(--border)" : `1px solid ${accent}44`,
+                          background: enabledPluginIds.has(plugin.id) ? "transparent" : `${accent}10`,
+                          color: enabledPluginIds.has(plugin.id) ? "var(--muted)" : accent,
+                          cursor: isBusy ? "wait" : "pointer",
+                          transition: "all 200ms var(--motion-ui)",
+                        }}
+                      >
+                        {enabledPluginIds.has(plugin.id) ? "Enabled" : "Disabled"}
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (!isBusy) toggle(plugin.id); }}
+                      style={{
+                        fontSize: 11, fontFamily: "var(--font-mono)",
+                        padding: "5px 11px", borderRadius: 999,
+                        border: isInstalled ? "1px solid var(--border)" : `1px solid ${accent}55`,
+                        background: isInstalled ? "transparent" : `${accent}18`,
+                        color: isInstalled ? "var(--muted)" : accent,
+                        cursor: isBusy ? "wait" : "pointer",
+                        transition: "all 200ms var(--motion-ui)",
+                      }}
+                    >
+                      {isBusy ? "…" : isInstalled ? "Remove" : "Install"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* G11: Permission preview */}
