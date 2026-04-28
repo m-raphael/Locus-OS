@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { useLocusStore, Flow, modulesForSpace } from "../store";
 import FlowRow from "./FlowRow";
 import { useCollabSession } from "./CollabBar";
+
+const MODES = ["open", "focus", "recovery", "mirror"] as const;
 import MailModule from "./modules/MailModule";
 import CalendarModule from "./modules/CalendarModule";
 import LiveModule from "./modules/LiveModule";
@@ -20,6 +22,7 @@ interface SpaceViewProps { collab: ReturnType<typeof useCollabSession>; }
 export default function SpaceView({ collab }: SpaceViewProps) {
   const { activeSpaceLabel, activeSpaceId, accent, legacyAppContext, flows, setFlows } = useLocusStore();
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
+  const [spaceMode, setSpaceMode] = useState<string>("open");
   // Record visit for predictive spaces
   useEffect(() => {
     if (!activeSpaceLabel) return;
@@ -63,9 +66,29 @@ export default function SpaceView({ collab }: SpaceViewProps) {
             <span style={{ color: accent }}>● live</span>
           </div>
         </div>
-        <div style={{ textAlign: "right", fontSize: 12, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
-          <div>scroll horizontally →</div>
-          <div style={{ marginTop: 4 }}>click a module to focus</div>
+        <div style={{ textAlign: "right", fontSize: 11, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
+            <span>mode</span>
+            {MODES.map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setSpaceMode(m);
+                  if (activeSpaceId) invoke("set_space_mode", { spaceId: activeSpaceId, mode: m }).catch(() => {});
+                }}
+                style={{
+                  fontSize: 11, fontFamily: "var(--font-mono)",
+                  padding: "2px 8px", borderRadius: 999,
+                  border: spaceMode === m ? `1px solid ${accent}55` : "1px solid var(--border)",
+                  background: spaceMode === m ? `${accent}18` : "transparent",
+                  color: spaceMode === m ? accent : "var(--muted)",
+                  cursor: "pointer",
+                  textTransform: "capitalize",
+                }}
+              >{m}</button>
+            ))}
+          </div>
+          <div style={{ marginTop: 8 }}>click a module to focus</div>
         </div>
       </div>
 
