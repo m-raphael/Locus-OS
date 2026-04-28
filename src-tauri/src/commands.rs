@@ -48,11 +48,11 @@ pub fn set_space_mode(
     space_id: String,
     mode: String,
 ) -> Result<(), String> {
-    let mode = AttentionMode::from_str(&mode);
-    db.0.lock()
-        .unwrap()
-        .update_space_mode(&space_id, mode)
-        .map_err(|e| e.to_string())
+    let amode = AttentionMode::from_str(&mode);
+    let guard = db.0.lock().unwrap();
+    guard.update_space_mode(&space_id, amode).map_err(|e| e.to_string())?;
+    let _ = guard.log_audit_event("mode_changed", Some("locus_user"), Some(&space_id), Some(&format!("mode={mode}")));
+    Ok(())
 }
 
 #[tauri::command]
@@ -136,20 +136,27 @@ pub fn list_legacy_apps() -> Vec<LegacyApp> {
 }
 
 #[tauri::command]
-pub fn launch_legacy_app(path: String) -> Result<(), String> {
-    apps::launch_app(&path)
+pub fn launch_legacy_app(db: State<AppDb>, path: String) -> Result<(), String> {
+    apps::launch_app(&path)?;
+    let _ = db.0.lock().unwrap().log_audit_event("legacy_app_launched", Some("locus_user"), None, Some(&path));
+    Ok(())
 }
 
 #[tauri::command]
-pub fn quit_legacy_app(bundle_id: String) -> Result<(), String> {
-    apps::quit_app(&bundle_id)
+pub fn quit_legacy_app(db: State<AppDb>, bundle_id: String) -> Result<(), String> {
+    apps::quit_app(&bundle_id)?;
+    let _ = db.0.lock().unwrap().log_audit_event("legacy_app_quit", Some("locus_user"), None, Some(&bundle_id));
+    Ok(())
 }
 
 // ── Context memory (item 6 / N3) ─────────────────────────────────────────
 
 #[tauri::command]
 pub fn store_memory(db: State<AppDb>, content: String, space_id: Option<String>) -> Result<String, String> {
-    db.0.lock().unwrap().store_memory(&content, space_id.as_deref()).map_err(|e| e.to_string())
+    let guard = db.0.lock().unwrap();
+    let id = guard.store_memory(&content, space_id.as_deref()).map_err(|e| e.to_string())?;
+    let _ = guard.log_audit_event("memory_stored", Some("locus_user"), Some(&id), Some(&content));
+    Ok(id)
 }
 
 #[tauri::command]
@@ -164,7 +171,10 @@ pub fn list_memories(db: State<AppDb>, limit: Option<usize>) -> Result<Vec<Memor
 
 #[tauri::command]
 pub fn forget_memory(db: State<AppDb>, id: String) -> Result<(), String> {
-    db.0.lock().unwrap().forget_memory(&id).map_err(|e| e.to_string())
+    let guard = db.0.lock().unwrap();
+    guard.forget_memory(&id).map_err(|e| e.to_string())?;
+    let _ = guard.log_audit_event("memory_forgotten", Some("locus_user"), Some(&id), None);
+    Ok(())
 }
 
 // ── Live collab signaling (item 8 / N5) ──────────────────────────────────
@@ -197,10 +207,10 @@ pub fn backend_status(app: tauri::AppHandle) -> BackendStatus {
 
 #[tauri::command]
 pub fn dismiss_space(db: State<AppDb>, space_id: String) -> Result<(), String> {
-    db.0.lock()
-        .unwrap()
-        .delete_ephemeral_space(&space_id)
-        .map_err(|e| e.to_string())
+    let guard = db.0.lock().unwrap();
+    guard.delete_ephemeral_space(&space_id).map_err(|e| e.to_string())?;
+    let _ = guard.log_audit_event("space_dismissed", Some("locus_user"), Some(&space_id), None);
+    Ok(())
 }
 
 #[tauri::command]
@@ -289,14 +299,19 @@ pub fn install_plugin(db: State<AppDb>, id: String) -> Result<(), String> {
     let plugin = catalog.iter().find(|p| p.id == id)
         .ok_or_else(|| format!("Plugin '{}' not found in catalog", id))?;
     let manifest_json = serde_json::to_string(plugin).map_err(|e| e.to_string())?;
-    db.0.lock().unwrap()
-        .install_plugin(&plugin.id, &plugin.name, &plugin.version, &manifest_json)
-        .map_err(|e| e.to_string())
+    let guard = db.0.lock().unwrap();
+    guard.install_plugin(&plugin.id, &plugin.name, &plugin.version, &manifest_json)
+        .map_err(|e| e.to_string())?;
+    let _ = guard.log_audit_event("plugin_installed", Some("locus_user"), Some(&id), Some(&plugin.name));
+    Ok(())
 }
 
 #[tauri::command]
 pub fn uninstall_plugin(db: State<AppDb>, id: String) -> Result<(), String> {
-    db.0.lock().unwrap().uninstall_plugin(&id).map_err(|e| e.to_string())
+    let guard = db.0.lock().unwrap();
+    guard.uninstall_plugin(&id).map_err(|e| e.to_string())?;
+    let _ = guard.log_audit_event("plugin_uninstalled", Some("locus_user"), Some(&id), None);
+    Ok(())
 }
 
 #[tauri::command]
@@ -306,7 +321,10 @@ pub fn list_installed_plugins(db: State<AppDb>) -> Result<Vec<InstalledPlugin>, 
 
 #[tauri::command]
 pub fn set_plugin_enabled(db: State<AppDb>, id: String, enabled: bool) -> Result<(), String> {
-    db.0.lock().unwrap().set_plugin_enabled(&id, enabled).map_err(|e| e.to_string())
+    let guard = db.0.lock().unwrap();
+    guard.set_plugin_enabled(&id, enabled).map_err(|e| e.to_string())?;
+    let _ = guard.log_audit_event("plugin_toggled", Some("locus_user"), Some(&id), Some(&format!("enabled={enabled}")));
+    Ok(())
 }
 
 // ── Predictive Spaces (item 10 / N6) ─────────────────────────────────────
@@ -325,7 +343,10 @@ pub fn predict_next_spaces(db: State<AppDb>, current_hour: i32, limit: Option<us
 
 #[tauri::command]
 pub fn create_focus_goal(db: State<AppDb>, name: String, description: Option<String>) -> Result<String, String> {
-    db.0.lock().unwrap().create_focus_goal(&name, description.as_deref()).map_err(|e| e.to_string())
+    let guard = db.0.lock().unwrap();
+    let id = guard.create_focus_goal(&name, description.as_deref()).map_err(|e| e.to_string())?;
+    let _ = guard.log_audit_event("focus_goal_created", Some("locus_user"), Some(&id), Some(&name));
+    Ok(id)
 }
 
 #[tauri::command]
@@ -340,17 +361,26 @@ pub fn get_active_focus_goal(db: State<AppDb>) -> Result<Option<FocusGoal>, Stri
 
 #[tauri::command]
 pub fn set_active_focus_goal(db: State<AppDb>, id: String) -> Result<(), String> {
-    db.0.lock().unwrap().set_active_focus_goal(&id).map_err(|e| e.to_string())
+    let guard = db.0.lock().unwrap();
+    guard.set_active_focus_goal(&id).map_err(|e| e.to_string())?;
+    let _ = guard.log_audit_event("focus_goal_activated", Some("locus_user"), Some(&id), None);
+    Ok(())
 }
 
 #[tauri::command]
 pub fn clear_active_focus_goal(db: State<AppDb>) -> Result<(), String> {
-    db.0.lock().unwrap().clear_active_focus_goal().map_err(|e| e.to_string())
+    let guard = db.0.lock().unwrap();
+    guard.clear_active_focus_goal().map_err(|e| e.to_string())?;
+    let _ = guard.log_audit_event("focus_goal_cleared", Some("locus_user"), None, None);
+    Ok(())
 }
 
 #[tauri::command]
 pub fn create_simulation(db: State<AppDb>, name: String, description: Option<String>) -> Result<String, String> {
-    db.0.lock().unwrap().create_simulation(&name, description.as_deref()).map_err(|e| e.to_string())
+    let guard = db.0.lock().unwrap();
+    let id = guard.create_simulation(&name, description.as_deref()).map_err(|e| e.to_string())?;
+    let _ = guard.log_audit_event("simulation_created", Some("locus_user"), Some(&id), Some(&name));
+    Ok(id)
 }
 
 #[tauri::command]
@@ -366,6 +396,7 @@ pub fn run_simulation(db: State<AppDb>, id: String, hours_ahead: Option<i32>) ->
     let tuples: Vec<(String, f64, f64)> = results.into_iter().map(|(name, prob, conf)| (name, prob, conf)).collect();
     guard.store_simulation_results(&id, &tuples).map_err(|e| e.to_string())?;
     let _ = guard.update_simulation_status(&id, "completed");
+    let _ = guard.log_audit_event("simulation_executed", Some("locus_user"), Some(&id), None);
     guard.get_simulation_results(&id).map_err(|e| e.to_string())
 }
 
