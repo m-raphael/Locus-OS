@@ -95,9 +95,35 @@ export default function LocusBar() {
 
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
+      // Cmd+K / Ctrl+K — focus Locus bar (works on macOS)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        setActive(true);
         inputRef.current?.focus();
+      }
+      // Cmd+/ / Ctrl+/ — toggle Locus bar focus
+      if ((e.metaKey || e.ctrlKey) && e.key === "/") {
+        e.preventDefault();
+        if (document.activeElement === inputRef.current) {
+          inputRef.current?.blur();
+          setActive(false);
+          setQuery("");
+        } else {
+          setActive(true);
+          inputRef.current?.focus();
+        }
+      }
+      // Alt+Space — toggle Locus bar focus (macOS-safe fallback)
+      if (e.altKey && e.key === " ") {
+        e.preventDefault();
+        if (document.activeElement === inputRef.current) {
+          inputRef.current?.blur();
+          setActive(false);
+          setQuery("");
+        } else {
+          setActive(true);
+          inputRef.current?.focus();
+        }
       }
       if (e.key === "Escape") {
         inputRef.current?.blur();
@@ -226,7 +252,7 @@ export default function LocusBar() {
             fontSize: 11, color: "var(--muted)", fontFamily: "var(--font-mono)",
             borderTop: "1px solid var(--dropdown-divider)",
           }}>
-            <span>↑↓ navigate · ↵ execute · esc close</span>
+            <span>⌘K · ⌘/ · ↑↓ navigate · ↵ execute · esc close</span>
             <span>LOTUS · intent v0.1</span>
           </div>
         </div>
@@ -316,7 +342,7 @@ export default function LocusBar() {
           onFocus={() => { setActive(true); setBarFocused(true); }}
           onBlur={() => setTimeout(() => { setActive(false); setBarFocused(false); }, 150)}
           onKeyDown={onKeyDown}
-          placeholder="Type an intention or press ⌘…"
+          placeholder="Type an intention or press ⌘K / ⌘/…"
           style={{
             flex: 1, background: "transparent", border: "none", outline: "none",
             fontSize: 16, letterSpacing: "-0.01em", color: "var(--text)",
