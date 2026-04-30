@@ -15,7 +15,7 @@ import MarketplaceModule from "./modules/MarketplaceModule";
 import SimulationModule from "./modules/SimulationModule";
 import AuditLogModule from "./modules/AuditLogModule";
 
-const MODULE_MAP = { mail: MailModule, calendar: CalendarModule, live: LiveModule, doc: DocModule, predictive: PredictiveModule, marketplace: MarketplaceModule, simulation: SimulationModule, audit: AuditLogModule } as const;
+const MODULE_MAP: Record<string, React.ComponentType<{ idx: number; accent: string; focused: boolean; anyFocused: boolean; onFocus: (e: React.MouseEvent) => void }>> = { mail: MailModule, calendar: CalendarModule, live: LiveModule, doc: DocModule, predictive: PredictiveModule, marketplace: MarketplaceModule, simulation: SimulationModule, audit: AuditLogModule, draft: () => null };
 
 interface SpaceViewProps { collab: ReturnType<typeof useCollabSession>; }
 
@@ -23,6 +23,7 @@ export default function SpaceView({ collab }: SpaceViewProps) {
   const { activeSpaceLabel, activeSpaceId, accent, legacyAppContext, flows, setFlows } = useLocusStore();
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
   const [spaceMode, setSpaceMode] = useState<string>("open");
+  const [draftModules, setDraftModules] = useState<{ id: string; verb: string }[]>([]);
   // Record visit for predictive spaces
   useEffect(() => {
     if (!activeSpaceLabel) return;
@@ -106,12 +107,12 @@ export default function SpaceView({ collab }: SpaceViewProps) {
         onClick={() => setFocusedIdx(null)}
         style={{
           flex: 1, overflowX: "auto", overflowY: "hidden",
-          scrollbarWidth: "thin",
-          WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%)",
-          maskImage: "linear-gradient(to right, transparent 0%, black 3%, black 97%, transparent 100%)",
-        }}
+          scrollbarWidth: "none", display: "flex", flexDirection: "column",
+          padding: "0 24px",
+          "--density-module-minh": "0px",
+        } as React.CSSProperties}
       >
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--density-module-gap)", padding: "8px 48px 32px 48px", minWidth: "max-content" }}>
+        <div style={{ display: "flex", alignItems: "stretch", gap: "var(--density-module-gap)", padding: "0 48px", minWidth: "max-content", flex: 1, minHeight: 0 }}>
           {/* Legacy app module takes slot 0 when present */}
           {legacyAppContext && (
             <LegacyAppModule
@@ -139,6 +140,77 @@ export default function SpaceView({ collab }: SpaceViewProps) {
             }
             return <Mod key={i} {...sharedProps} />;
           })}
+          {/* Draft modules created via + bubble */}
+          {draftModules.map((d) => {
+            return (
+              <div
+                key={d.id}
+                style={{
+                  width: "var(--density-module-width)", minHeight: "var(--density-module-minh)",
+                  borderRadius: "var(--module-radius)", flexShrink: 0,
+                  background: "var(--glass-bg)",
+                  backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                  border: "1.5px dashed rgba(128,128,128,0.25)",
+                  padding: "24px 28px",
+                  display: "flex", flexDirection: "column",
+                  animation: "lotusFloatIn 700ms var(--motion-float)",
+                }}
+              >
+                <p style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.28)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6, fontFamily: "var(--font-mono)" }}>
+                  Draft
+                </p>
+                <p style={{ fontSize: 15, fontWeight: 500, color: "var(--text)", marginTop: 8 }}>
+                  <span style={{ color: accent }}>{d.verb}</span>
+                  <span style={{ color: "var(--muted)", marginLeft: 8 }}>…</span>
+                </p>
+                <p style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", marginTop: "auto", fontFamily: "var(--font-mono)" }}>
+                  Click Locus bar to set intent
+                </p>
+              </div>
+            );
+          })}
+          {/* Plus bubble — create a new draft module */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Add module"
+            style={{
+              flexShrink: 0, alignSelf: "center",
+              width: 44, height: 44, borderRadius: "50%",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "var(--dropdown-bg)",
+              backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+              border: `1px solid ${accent}44`,
+              cursor: "pointer",
+              color: accent,
+              fontSize: 20, lineHeight: 1,
+              transition: "all 400ms cubic-bezier(0.22, 0.9, 0.32, 1)",
+              animation: "lotusModuleAppear 400ms cubic-bezier(0.22, 0.9, 0.32, 1) backwards",
+            }}
+            onClick={() => {
+              const verb = ["Draft", "Find", "Review", "Plan", "Call", "Send"][Math.floor(Math.random() * 6)];
+              const id = "draft-" + Date.now();
+              setDraftModules((prev) => [...prev, { id, verb }]);
+              // Also persist to DB if a flow exists
+              const targetFlow = activeSpaceId ? (flows[activeSpaceId] ?? [])[0] : null;
+              if (targetFlow) {
+                const template = JSON.stringify({ verb, noun: "", modifier: null });
+                invoke<string>("create_module", { flowId: targetFlow.id, componentType: "draft", propsJson: template })
+                  .catch(() => {});
+              }
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${accent}18`;
+              e.currentTarget.style.borderColor = `${accent}66`;
+              e.currentTarget.style.transform = "scale(1.1)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--dropdown-bg)";
+              e.currentTarget.style.borderColor = `${accent}44`;
+              e.currentTarget.style.transform = "scale(1)";
+            }}
+            title="Add module (Tab)"
+          >+</div>
         </div>
       </div>
     </div>

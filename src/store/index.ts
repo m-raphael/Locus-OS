@@ -60,7 +60,7 @@ export function buildSuggestions(query: string): Suggestion[] {
   return out.slice(0, 6);
 }
 
-export type ModuleKind = "mail" | "calendar" | "live" | "doc" | "predictive" | "marketplace" | "simulation" | "audit";
+export type ModuleKind = "mail" | "calendar" | "live" | "doc" | "predictive" | "marketplace" | "simulation" | "audit" | "draft";
 
 export function modulesForSpace(label: string): ModuleKind[] {
   const l = label.toLowerCase();
@@ -97,6 +97,7 @@ interface LocusStore {
   removeSpace: (id: string) => void;
   setFlows: (spaceId: string, flows: Flow[]) => void;
   setModules: (flowId: string, modules: Module[]) => void;
+  prependModule: (flowId: string, module: Module) => void;
   toggleTheme: () => void;
   setBackendLabel: (label: "NPU" | "NIM" | "KEY" | null) => void;
   setInstalledPluginIds: (ids: Set<string>) => void;
@@ -139,6 +140,8 @@ export const useLocusStore = create<LocusStore>((set) => ({
     set((s) => ({ flows: { ...s.flows, [spaceId]: flows } })),
   setModules: (flowId, modules) =>
     set((s) => ({ modules: { ...s.modules, [flowId]: modules } })),
+  prependModule: (flowId, mod) =>
+    set((s) => ({ modules: { ...s.modules, [flowId]: [mod, ...(s.modules[flowId] ?? [])] } })),
   toggleTheme: () => set((s) => ({ isDark: !s.isDark })),
   setBackendLabel: (label) => set({ backendLabel: label }),
   setInstalledPluginIds: (ids) => set({ installedPluginIds: ids }),
