@@ -5,7 +5,7 @@ mod api;
 mod commands;
 mod apps;
 mod marketplace;
-use commands::{AppDb, AppGovernance};
+use commands::{AppDb, AppGovernance, AppGraph};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -20,8 +20,21 @@ pub fn run() {
                 if count > 0 { eprintln!("[cleanup] Removed {} old ephemeral spaces", count); }
             }
             let db_arc = Arc::new(Mutex::new(db));
-            tauri::async_runtime::spawn(api::serve(db_arc.clone()));
+            let neo4j_uri = std::env::var("NEO4J_URI").unwrap_or_else(|_| "bolt://127.0.0.1:7687".into());
+            let neo4j_user = std::env::var("NEO4J_USER").unwrap_or_else(|_| "neo4j".into());
+            let neo4j_pass = std::env::var("NEO4J_PASSWORD").unwrap_or_else(|_| "neo4j".into());
+            let graph = tauri::async_runtime::block_on(
+                spaces_core::GraphDb::try_connect(&neo4j_uri, &neo4j_user, &neo4j_pass)
+            ).ok();
+            if graph.is_some() {
+                eprintln!("[graph] Neo4j connected at {neo4j_uri}");
+            } else {
+                eprintln!("[graph] Neo4j not available — graph features disabled");
+            }
+            let graph_arc = std::sync::Arc::new(graph.clone());
+            tauri::async_runtime::spawn(api::serve(db_arc.clone(), graph_arc));
             app.manage(AppDb(db_arc));
+            app.manage(AppGraph(graph));
             app.manage(AppGovernance(locus_agent::governance::GovernanceEngine::default()));
             Ok(())
         })
@@ -67,6 +80,9 @@ pub fn run() {
             commands::get_simulation_results,
             commands::log_audit_event,
             commands::list_audit_logs,
+            commands::graph_related_spaces,
+            commands::graph_attention_path,
+            commands::graph_record_transition,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Locus");

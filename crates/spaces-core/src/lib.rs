@@ -1,3 +1,6 @@
+pub mod graph;
+pub use graph::GraphDb;
+
 use chrono::Timelike;
 use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};

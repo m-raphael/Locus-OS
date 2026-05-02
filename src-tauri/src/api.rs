@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     routing::{delete, get, post},
     Json, Router,
 };
@@ -9,6 +9,7 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 pub type SharedDb = Arc<Mutex<spaces_core::Db>>;
+pub type SharedGraph = Arc<Option<spaces_core::GraphDb>>;
 
 // ── Request / response body types ────────────────────────────────────────
 
@@ -169,6 +170,7 @@ pub struct AuditQuery {
         (name = "simulations", description = "Predictive simulations"),
         (name = "governance",  description = "Agent governance policy"),
         (name = "audit",       description = "Audit log"),
+        (name = "graph",       description = "Neo4j graph traversal — returns empty if Neo4j is offline"),
     )
 )]
 pub struct ApiDoc;
@@ -584,9 +586,104 @@ async fn list_audit_logs(State(db): State<SharedDb>, Query(q): Query<AuditQuery>
     Ok(Json(serde_json::to_value(v).unwrap()))
 }
 
+// ── Graph ─────────────────────────────────────────────────────────────────
+
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct RelatedQuery {
+    pub limit: Option<usize>,
+}
+
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct AttentionPathQuery {
+    pub mode: String,
+}
+
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct TransitionBody {
+    pub from_id: String,
+    pub to_id: String,
+}
+
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct GraphSyncSpaceBody {
+    pub id: String,
+    pub description: String,
+    pub mode: String,
+}
+
+#[utoipa::path(
+    get, path = "/api/graph/related/{space_id}", tag = "graph",
+    params(
+        ("space_id" = String, Path, description = "Space ID"),
+        ("limit" = Option<usize>, Query, description = "Max hops (default 5)"),
+    ),
+    responses((status = 200, description = "Array of related space IDs"))
+)]
+async fn graph_related_spaces(
+    Extension(graph): Extension<SharedGraph>,
+    Path(space_id): Path<String>,
+    Query(q): Query<RelatedQuery>,
+) -> Json<serde_json::Value> {
+    let ids = match graph.as_ref() {
+        Some(g) => g.related_spaces(&space_id, q.limit.unwrap_or(5)).await,
+        None => vec![],
+    };
+    Json(serde_json::json!({ "ids": ids, "neo4j": graph.is_some() }))
+}
+
+#[utoipa::path(
+    get, path = "/api/graph/path/{space_id}", tag = "graph",
+    params(
+        ("space_id" = String, Path, description = "Starting space ID"),
+        ("mode" = String, Query, description = "Target attention mode (focus|recovery|mirror|open)"),
+    ),
+    responses((status = 200, description = "Ordered space IDs along shortest LEADS_TO path"))
+)]
+async fn graph_attention_path(
+    Extension(graph): Extension<SharedGraph>,
+    Path(space_id): Path<String>,
+    Query(q): Query<AttentionPathQuery>,
+) -> Json<serde_json::Value> {
+    let ids = match graph.as_ref() {
+        Some(g) => g.attention_path(&space_id, &q.mode).await,
+        None => vec![],
+    };
+    Json(serde_json::json!({ "path": ids, "neo4j": graph.is_some() }))
+}
+
+#[utoipa::path(
+    post, path = "/api/graph/transition", tag = "graph",
+    request_body = TransitionBody,
+    responses((status = 200, description = "Transition recorded (LEADS_TO edge weight +1)"))
+)]
+async fn graph_record_transition(
+    Extension(graph): Extension<SharedGraph>,
+    Json(b): Json<TransitionBody>,
+) -> Json<serde_json::Value> {
+    if let Some(g) = graph.as_ref() {
+        g.record_transition(&b.from_id, &b.to_id).await;
+    }
+    Json(serde_json::json!({ "ok": true, "neo4j": graph.is_some() }))
+}
+
+#[utoipa::path(
+    post, path = "/api/graph/sync/space", tag = "graph",
+    request_body = GraphSyncSpaceBody,
+    responses((status = 200, description = "Space synced to Neo4j"))
+)]
+async fn graph_sync_space(
+    Extension(graph): Extension<SharedGraph>,
+    Json(b): Json<GraphSyncSpaceBody>,
+) -> Json<serde_json::Value> {
+    if let Some(g) = graph.as_ref() {
+        g.sync_space(&b.id, &b.description, &b.mode).await;
+    }
+    Json(serde_json::json!({ "ok": true, "neo4j": graph.is_some() }))
+}
+
 // ── Router ────────────────────────────────────────────────────────────────
 
-pub async fn serve(db: SharedDb) {
+pub async fn serve(db: SharedDb, graph: SharedGraph) {
     let app = Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()))
         // system
@@ -622,6 +719,12 @@ pub async fn serve(db: SharedDb) {
         .route("/api/governance", get(governance_summary))
         .route("/api/predict", get(predict_next_spaces))
         .route("/api/audit", get(list_audit_logs))
+        // graph
+        .route("/api/graph/related/{space_id}", get(graph_related_spaces))
+        .route("/api/graph/path/{space_id}", get(graph_attention_path))
+        .route("/api/graph/transition", post(graph_record_transition))
+        .route("/api/graph/sync/space", post(graph_sync_space))
+        .layer(axum::Extension(graph))
         .with_state(db);
 
     let listener = tokio::net::TcpListener::bind("127.0.0.1:4000")

@@ -5,10 +5,12 @@ use tauri::Manager;
 use locus_parser::IntentJson;
 use spaces_core::{AttentionMode, AuditLog, CollabSignal, Db, Flow, FocusGoal, InstalledPlugin, Memory, Module, PredictedSpace, Simulation, SimulationResult, SpaceSummary};
 use std::sync::{Arc, Mutex};
+use spaces_core::GraphDb;
 use tauri::State;
 
 pub struct AppDb(pub Arc<Mutex<Db>>);
 pub struct AppGovernance(pub GovernanceEngine);
+pub struct AppGraph(pub Option<GraphDb>);
 
 #[tauri::command]
 pub fn parse_intent(input: String) -> IntentJson {
@@ -428,4 +430,42 @@ pub fn list_audit_logs(
     limit: Option<usize>,
 ) -> Result<Vec<AuditLog>, String> {
     db.0.lock().unwrap().list_audit_logs(eventType.as_deref(), limit.unwrap_or(50)).map_err(|e| e.to_string())
+}
+
+// ── Graph queries (Neo4j — returns empty vec if Neo4j is offline) ─────────
+
+#[tauri::command]
+pub async fn graph_related_spaces(
+    graph: State<'_, AppGraph>,
+    space_id: String,
+    limit: Option<usize>,
+) -> Result<Vec<String>, String> {
+    match &graph.0 {
+        Some(g) => Ok(g.related_spaces(&space_id, limit.unwrap_or(5)).await),
+        None => Ok(vec![]),
+    }
+}
+
+#[tauri::command]
+pub async fn graph_attention_path(
+    graph: State<'_, AppGraph>,
+    space_id: String,
+    mode: String,
+) -> Result<Vec<String>, String> {
+    match &graph.0 {
+        Some(g) => Ok(g.attention_path(&space_id, &mode).await),
+        None => Ok(vec![]),
+    }
+}
+
+#[tauri::command]
+pub async fn graph_record_transition(
+    graph: State<'_, AppGraph>,
+    from_id: String,
+    to_id: String,
+) -> Result<(), String> {
+    if let Some(g) = &graph.0 {
+        g.record_transition(&from_id, &to_id).await;
+    }
+    Ok(())
 }
