@@ -4,10 +4,10 @@ use locus_agent::{AgentAction, AgentResult, governance::{GovernanceEngine, Gover
 use tauri::Manager;
 use locus_parser::IntentJson;
 use spaces_core::{AttentionMode, AuditLog, CollabSignal, Db, Flow, FocusGoal, InstalledPlugin, Memory, Module, PredictedSpace, Simulation, SimulationResult, SpaceSummary};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::State;
 
-pub struct AppDb(pub Mutex<Db>);
+pub struct AppDb(pub Arc<Mutex<Db>>);
 pub struct AppGovernance(pub GovernanceEngine);
 
 #[tauri::command]

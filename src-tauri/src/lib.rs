@@ -1,6 +1,7 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
+mod api;
 mod commands;
 mod apps;
 mod marketplace;
@@ -18,7 +19,9 @@ pub fn run() {
             if let Ok(count) = db.cleanup_ephemeral_spaces(24) {
                 if count > 0 { eprintln!("[cleanup] Removed {} old ephemeral spaces", count); }
             }
-            app.manage(AppDb(Mutex::new(db)));
+            let db_arc = Arc::new(Mutex::new(db));
+            tauri::async_runtime::spawn(api::serve(db_arc.clone()));
+            app.manage(AppDb(db_arc));
             app.manage(AppGovernance(locus_agent::governance::GovernanceEngine::default()));
             Ok(())
         })
