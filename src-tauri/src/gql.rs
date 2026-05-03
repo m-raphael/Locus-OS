@@ -274,7 +274,7 @@ impl QueryRoot {
 
     async fn spaces(&self, ctx: &Context<'_>) -> GqlResult<Vec<Space>> {
         let s = st(ctx);
-        Ok(s.db.list_spaces().await.map_err(to_gql)?
+        Ok(s.db.list_spaces(100).await.map_err(to_gql)?
             .into_iter().map(Space::from).collect())
     }
 

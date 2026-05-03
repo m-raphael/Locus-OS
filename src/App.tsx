@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useLocusStore } from "./store";
 import LotusCanvas from "./components/LotusCanvas";
@@ -24,7 +24,7 @@ export default function App() {
   }, [uiDensity]);
 
   // Poll backend status once on mount (light — just a status read)
-  useEffect(() => {
+  const refreshStatus = useCallback(() => {
     invoke<{ selected: string }>("backend_status")
       .then((s) => {
         const label = s.selected === "keyword" ? "KEY" : s.selected.toUpperCase() as "NPU" | "NIM";
@@ -32,6 +32,10 @@ export default function App() {
       })
       .catch(() => setBackendLabel("KEY"));
   }, [setBackendLabel]);
+
+  useEffect(() => {
+    refreshStatus();
+  }, [refreshStatus]);
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative", fontFamily: "var(--font-sans)" }}>

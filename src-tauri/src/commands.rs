@@ -95,8 +95,8 @@ pub async fn parse_intent(
 }
 
 #[tauri::command]
-pub async fn list_spaces(db: State<'_, AppDb>) -> Result<Vec<SpaceSummary>, String> {
-    db.0.list_spaces().await.map_err(|e| e.to_string())
+pub async fn list_spaces(db: State<'_, AppDb>, limit: Option<usize>) -> Result<Vec<SpaceSummary>, String> {
+    db.0.list_spaces(limit.unwrap_or(50)).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

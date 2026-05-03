@@ -9,6 +9,8 @@ members = [
 ]
 
 [profile.release]
-lto = "thin"
+lto = true
 codegen-units = 1
 strip = true
+opt-level = "s"
+panic = "abort"

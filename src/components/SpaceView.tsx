@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useLocusStore, Flow, modulesForSpace } from "../store";
 import FlowRow from "./FlowRow";
@@ -19,7 +19,7 @@ const MODULE_MAP: Record<string, React.ComponentType<{ idx: number; accent: stri
 
 interface SpaceViewProps { collab: ReturnType<typeof useCollabSession>; }
 
-export default function SpaceView({ collab }: SpaceViewProps) {
+const SpaceView = memo(function SpaceView({ collab }: SpaceViewProps) {
   const { activeSpaceLabel, activeSpaceId, accent, legacyAppContext, flows, setFlows } = useLocusStore();
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
   const [spaceMode, setSpaceMode] = useState<string>("open");
@@ -215,4 +215,6 @@ export default function SpaceView({ collab }: SpaceViewProps) {
       </div>
     </div>
   );
-}
+});
+
+export default SpaceView;

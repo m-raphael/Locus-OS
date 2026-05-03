@@ -235,15 +235,15 @@ impl Db {
         Ok(id)
     }
 
-    pub async fn list_spaces(&self) -> Result<Vec<SpaceSummary>> {
-        let mut r = self.0.execute(
-            query("MATCH (s:Space)-[:FOR_INTENT]->(i:Intent) \
+    pub async fn list_spaces(&self, limit: usize) -> Result<Vec<SpaceSummary>> {
+        let q = format!("MATCH (s:Space)-[:FOR_INTENT]->(i:Intent) \
                    RETURN s.id AS id, i.description AS desc, s.attention_mode AS mode, s.is_ephemeral AS eph, \
                           coalesce(s.participants, []) AS participants, \
                           s.scheduled_at AS scheduled_at, \
                           coalesce(s.topic_tags, []) AS topic_tags \
-                   ORDER BY s.created_at DESC"),
-        ).await?;
+                   ORDER BY s.created_at DESC \
+                   LIMIT {limit}");
+        let mut r = self.0.execute(query(&q)).await?;
         let mut out = vec![];
         while let Ok(Some(row)) = r.next().await {
             out.push(SpaceSummary {

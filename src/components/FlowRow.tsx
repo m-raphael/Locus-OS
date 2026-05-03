@@ -1,4 +1,4 @@
-import { useEffect, useCallback, KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useCallback, memo, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Flow, Module, useLocusStore } from "../store";
 
@@ -42,16 +42,16 @@ function props(module: Module): Record<string, unknown> {
   catch { return {}; }
 }
 
-function ModuleCard({ module, label, body }: { module: Module; label: string; body: string }) {
+const ModuleCard = memo(function ModuleCard({ module, label, body }: { module: Module; label: string; body: string }) {
   return (
     <div key={module.id} style={CARD}>
       <p style={LABEL}>{label}</p>
       <p style={CONTENT}>{body}</p>
     </div>
   );
-}
+});
 
-function DraftModule({ module }: { module: Module }) {
+const DraftModule = memo(function DraftModule({ module }: { module: Module }) {
   const p = props(module);
   const verb = String(p.verb ?? "Draft");
   const noun = String(p.noun ?? "New");
@@ -67,7 +67,7 @@ function DraftModule({ module }: { module: Module }) {
       </p>
     </div>
   );
-}
+});
 
 const MODULE_RENDERERS: Record<string, (m: Module) => React.ReactElement> = {
   NoteModule: (m) => {

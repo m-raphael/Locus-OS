@@ -1,0 +1,12 @@
+# Use LLD linker for faster release builds on macOS.
+# Requires: brew install llvm
+# On Apple Silicon: /opt/homebrew/opt/llvm/bin/ld64.lld
+# On Intel:         /usr/local/opt/llvm/bin/ld64.lld
+#
+# If lld is not installed, rustc falls back to the system linker (ld64).
+
+[target.aarch64-apple-darwin]
+linker = "/opt/homebrew/opt/llvm/bin/ld64.lld"
+
+[target.x86_64-apple-darwin]
+linker = "/usr/local/opt/llvm/bin/ld64.lld"
