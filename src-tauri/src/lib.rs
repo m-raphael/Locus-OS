@@ -1,39 +1,53 @@
-use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
 mod api;
 mod commands;
 mod apps;
+mod gql;
 mod marketplace;
 use commands::{AppDb, AppGovernance, AppGraph};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Load .env from CWD or repo root if present. Existing process env wins.
+    // Searches: ./.env, then walks parents looking for .env (handy when launched
+    // from src-tauri/ during dev).
+    match dotenvy::dotenv() {
+        Ok(path) => eprintln!("[env] loaded {}", path.display()),
+        Err(_) => eprintln!("[env] no .env file found — using process environment only"),
+    }
+
     tauri::Builder::default()
         .setup(|app| {
-            let data_dir = app.path().app_data_dir()?;
-            std::fs::create_dir_all(&data_dir)?;
-            let db_path = data_dir.join("locus.sqlite");
-            let db = spaces_core::Db::open(db_path.to_str().unwrap())
-                .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
-            if let Ok(count) = db.cleanup_ephemeral_spaces(24) {
-                if count > 0 { eprintln!("[cleanup] Removed {} old ephemeral spaces", count); }
-            }
-            let db_arc = Arc::new(Mutex::new(db));
             let neo4j_uri = std::env::var("NEO4J_URI").unwrap_or_else(|_| "bolt://127.0.0.1:7687".into());
             let neo4j_user = std::env::var("NEO4J_USER").unwrap_or_else(|_| "neo4j".into());
-            let neo4j_pass = std::env::var("NEO4J_PASSWORD").unwrap_or_else(|_| "neo4j".into());
+            let neo4j_pass = std::env::var("NEO4J_PASSWORD")
+                .map_err(|_| "NEO4J_PASSWORD is required (copy .env.example to .env and set it)")?;
+            // Refuse the well-known default — protects users who accidentally
+            // ship their app pointed at a Neo4j with factory credentials.
+            if neo4j_pass == "neo4j" || neo4j_pass == "changeme" {
+                return Err("NEO4J_PASSWORD is set to a default placeholder; choose a real password".into());
+            }
+
+            let db = tauri::async_runtime::block_on(
+                spaces_core::Db::connect(&neo4j_uri, &neo4j_user, &neo4j_pass)
+            ).map_err(|e| Box::new(e) as Box<dyn std::error::Error>)?;
+            eprintln!("[db] Neo4j connected at {neo4j_uri}");
+
+            if let Ok(count) = tauri::async_runtime::block_on(db.cleanup_ephemeral_spaces(24)) {
+                if count > 0 { eprintln!("[cleanup] Removed {} old ephemeral spaces", count); }
+            }
+
+            // Optional secondary GraphDb wrapper used by graph traversal queries.
+            // Re-uses the same Neo4j endpoint; falls back to None if unreachable.
             let graph = tauri::async_runtime::block_on(
                 spaces_core::GraphDb::try_connect(&neo4j_uri, &neo4j_user, &neo4j_pass)
             ).ok();
-            if graph.is_some() {
-                eprintln!("[graph] Neo4j connected at {neo4j_uri}");
-            } else {
-                eprintln!("[graph] Neo4j not available — graph features disabled");
-            }
-            let graph_arc = std::sync::Arc::new(graph.clone());
-            tauri::async_runtime::spawn(api::serve(db_arc.clone(), graph_arc));
-            app.manage(AppDb(db_arc));
+
+            // Spawn embedded HTTP server hosting GraphQL + GraphiQL playground.
+            tauri::async_runtime::spawn(api::serve(db.clone(), graph.clone()));
+
+            app.manage(AppDb(db));
             app.manage(AppGraph(graph));
             app.manage(AppGovernance(locus_agent::governance::GovernanceEngine::default()));
             Ok(())

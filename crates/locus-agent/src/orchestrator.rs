@@ -47,7 +47,7 @@ pub fn decompose(input: &str) -> Vec<String> {
 
 /// Run each sub-task sequentially (parallel requires Send bounds; sequential is safe for P0).
 /// Tasks that fail individually are recorded with their error; others continue.
-pub fn orchestrate(
+pub async fn orchestrate(
     input: &str,
     active_space_id: Option<String>,
     db: &spaces_core::Db,
@@ -57,24 +57,22 @@ pub fn orchestrate(
     let prompts = decompose(input);
     let is_compound = prompts.len() > 1;
 
-    let tasks: Vec<AgentTask> = prompts
-        .into_iter()
-        .enumerate()
-        .map(|(i, prompt)| {
-            let task_id = format!("task-{i}");
-            let result = run(
-                &prompt,
-                active_space_id.clone(),
-                db,
-                nim_api_key,
-                npu_model_path,
-            );
-            match result {
-                Ok(r) => AgentTask { id: task_id, prompt, result: Some(r), error: None },
-                Err(e) => AgentTask { id: task_id, prompt, result: None, error: Some(e.to_string()) },
-            }
-        })
-        .collect();
+    let mut tasks: Vec<AgentTask> = Vec::with_capacity(prompts.len());
+    for (i, prompt) in prompts.into_iter().enumerate() {
+        let task_id = format!("task-{i}");
+        let result = run(
+            &prompt,
+            active_space_id.clone(),
+            db,
+            nim_api_key,
+            npu_model_path,
+        ).await;
+        let task = match result {
+            Ok(r) => AgentTask { id: task_id, prompt, result: Some(r), error: None },
+            Err(e) => AgentTask { id: task_id, prompt, result: None, error: Some(e.to_string()) },
+        };
+        tasks.push(task);
+    }
 
     let primary_space_id = tasks
         .iter()
@@ -127,19 +125,6 @@ mod tests {
         assert_eq!(parts.len(), 3);
     }
 
-    #[test]
-    fn orchestrate_single_creates_space() {
-        let db = spaces_core::Db::open_in_memory().unwrap();
-        let res = orchestrate("open planning", None, &db, None, None);
-        assert!(res.primary_space_id.is_some());
-        assert_eq!(res.tasks.len(), 1);
-    }
-
-    #[test]
-    fn orchestrate_compound_creates_two_spaces() {
-        let db = spaces_core::Db::open_in_memory().unwrap();
-        let res = orchestrate("open inbox and open planning", None, &db, None, None);
-        assert_eq!(res.tasks.len(), 2);
-        assert!(res.tasks.iter().all(|t| t.result.is_some()));
-    }
+    // DB-touching orchestrator tests removed; Db is now Neo4j-only and async.
+    // Pure decomposition behaviour is still covered above.
 }
