@@ -1,0 +1,43 @@
+# Locus-OS · backing services for local development.
+#
+# The Locus desktop app is a Tauri/macOS binary and is NOT containerised
+# itself — it runs natively and connects to the services defined here.
+#
+# Quick start:
+#   1. cp .env.example .env  (set NEO4J_PASSWORD)
+#   2. docker compose up -d
+#   3. Neo4j Browser → http://127.0.0.1:7474   (login: neo4j / $NEO4J_PASSWORD)
+#   4. cargo tauri dev       (the app reads NEO4J_URI from .env)
+#
+# Ports are bound to 127.0.0.1 only — never 0.0.0.0 — because the bolt
+# protocol is unencrypted by default and these are dev credentials.
+
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    container_name: locus-neo4j
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7474:7474"   # HTTP / Browser UI
+      - "127.0.0.1:7687:7687"   # Bolt (used by neo4rs)
+    environment:
+      NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set in .env}"
+      # APOC core ships with the image; enable so future graph algos work.
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+      NEO4J_server_memory_heap_initial__size: "512m"
+      NEO4J_server_memory_heap_max__size: "1G"
+    volumes:
+      - locus-neo4j-data:/data
+      - locus-neo4j-logs:/logs
+      - ./crates/spaces-core/migrations:/migrations:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  locus-neo4j-data:
+  locus-neo4j-logs:
