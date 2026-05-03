@@ -41,13 +41,22 @@ documented inline in `.env.example`.
 ### 3 · Launch Neo4j with Docker
 
 ```bash
-docker compose up -d
+npm run db:up         # wraps `docker compose up -d`
 ```
 
 This runs `neo4j:5.26-community` (with APOC core) bound to `127.0.0.1`
 only. It picks up `NEO4J_USER` / `NEO4J_PASSWORD` from your `.env`.
 
-Verify it's up:
+Other db-lifecycle scripts:
+
+| npm script | What it does |
+|---|---|
+| `npm run db:up` | Start Neo4j detached |
+| `npm run db:logs` | Tail `docker compose logs -f neo4j` |
+| `npm run db:down` | Stop Neo4j (data preserved) |
+| `npm run db:reset` | Stop + wipe volume + restart (destructive) |
+
+Verify it's up at the local endpoints:
 
 | Endpoint | Purpose |
 |----------|---------|
@@ -65,12 +74,21 @@ docker compose exec neo4j cypher-shell -u neo4j -p "$NEO4J_PASSWORD" \
 
 ### 4 · Run the app
 
+One-shot — boots Neo4j (if not already up) and launches the Tauri shell:
+
 ```bash
 npm install            # first time only
+npm run app            # = npm run db:up && cargo tauri dev
+```
+
+Or step-by-step:
+
+```bash
+npm run db:up
 cargo tauri dev
 ```
 
-On startup you should see:
+On startup you should see, with the GraphQL/UI bound to **localhost only**:
 
 ```
 [env] loaded /…/.env
@@ -78,11 +96,19 @@ On startup you should see:
 [api] GraphQL ready: http://127.0.0.1:4000/graphql  ·  Playground: http://127.0.0.1:4000/graphiql
 ```
 
+Local endpoints once running:
+
+| URL | Purpose |
+|---|---|
+| http://127.0.0.1:4000/graphql | GraphQL endpoint (POST queries) |
+| http://127.0.0.1:4000/graphiql | GraphiQL playground (debug builds only) |
+| http://127.0.0.1:7474 | Neo4j Browser UI |
+
 ### 5 · Stop services
 
 ```bash
-docker compose down            # stop, keep data
-docker compose down -v         # stop + wipe the Neo4j volume
+npm run db:down                # = docker compose down            (keep data)
+npm run db:reset               # = docker compose down -v + up -d (wipe volume)
 ```
 
 ---

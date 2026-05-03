@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f neo4j",
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "app": "npm run db:up && cargo tauri dev"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
