@@ -5,17 +5,19 @@
 
 use async_graphql::{Context, EmptySubscription, Error, Object, Result as GqlResult, Schema, SimpleObject};
 use spaces_core::{Db, GraphDb};
+use std::sync::Arc;
 
 pub type LocusSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
 pub struct GqlState {
     pub db: Db,
     pub graph: Option<GraphDb>,
+    pub nlp: Arc<dyn locus_nlp::NlpPipeline>,
 }
 
-pub fn build_schema(db: Db, graph: Option<GraphDb>) -> LocusSchema {
+pub fn build_schema(db: Db, graph: Option<GraphDb>, nlp: Arc<dyn locus_nlp::NlpPipeline>) -> LocusSchema {
     let builder = Schema::build(QueryRoot, MutationRoot, EmptySubscription)
-        .data(GqlState { db, graph })
+        .data(GqlState { db, graph, nlp })
         // Bound query cost: prevents pathological nested traversals from
         // pinning the Neo4j daemon. Tune if legitimate queries hit the cap.
         .limit_depth(10)
@@ -164,6 +166,95 @@ impl From<spaces_core::AuditLog> for AuditLog {
 pub struct Plugin {
     pub id: String, pub name: String, pub version: String,
     pub manifest_json: String,
+}
+
+// ── NLP types ───────────────────────────────────────────────────────────────
+
+#[derive(async_graphql::Enum, Clone, Copy, PartialEq, Eq)]
+pub enum GqlPosTag {
+    Noun, Verb, Adj, Adv, Pron, Det, Prep, Conj, Num, Punct, Other,
+}
+impl From<locus_nlp::PosTag> for GqlPosTag {
+    fn from(p: locus_nlp::PosTag) -> Self {
+        match p {
+            locus_nlp::PosTag::Noun => Self::Noun,
+            locus_nlp::PosTag::Verb => Self::Verb,
+            locus_nlp::PosTag::Adj => Self::Adj,
+            locus_nlp::PosTag::Adv => Self::Adv,
+            locus_nlp::PosTag::Pron => Self::Pron,
+            locus_nlp::PosTag::Det => Self::Det,
+            locus_nlp::PosTag::Prep => Self::Prep,
+            locus_nlp::PosTag::Conj => Self::Conj,
+            locus_nlp::PosTag::Num => Self::Num,
+            locus_nlp::PosTag::Punct => Self::Punct,
+            locus_nlp::PosTag::Other => Self::Other,
+        }
+    }
+}
+
+#[derive(async_graphql::Enum, Clone, Copy, PartialEq, Eq)]
+pub enum GqlEntityLabel {
+    Person, Org, Loc, Date, Time, Money, Product, Misc,
+}
+impl From<locus_nlp::EntityLabel> for GqlEntityLabel {
+    fn from(e: locus_nlp::EntityLabel) -> Self {
+        match e {
+            locus_nlp::EntityLabel::Person => Self::Person,
+            locus_nlp::EntityLabel::Org => Self::Org,
+            locus_nlp::EntityLabel::Loc => Self::Loc,
+            locus_nlp::EntityLabel::Date => Self::Date,
+            locus_nlp::EntityLabel::Time => Self::Time,
+            locus_nlp::EntityLabel::Money => Self::Money,
+            locus_nlp::EntityLabel::Product => Self::Product,
+            locus_nlp::EntityLabel::Misc => Self::Misc,
+        }
+    }
+}
+
+#[derive(SimpleObject)]
+pub struct GqlToken {
+    pub start: usize,
+    pub end: usize,
+    pub surface: String,
+    pub lemma: Option<String>,
+    pub pos: GqlPosTag,
+}
+impl From<locus_nlp::Token> for GqlToken {
+    fn from(t: locus_nlp::Token) -> Self {
+        Self { start: t.start, end: t.end, surface: t.surface, lemma: t.lemma, pos: t.pos.into() }
+    }
+}
+
+#[derive(SimpleObject)]
+pub struct GqlEntity {
+    pub start: usize,
+    pub end: usize,
+    pub text: String,
+    pub label: GqlEntityLabel,
+    pub score: f64,
+    pub linked_id: Option<String>,
+}
+impl From<locus_nlp::Entity> for GqlEntity {
+    fn from(e: locus_nlp::Entity) -> Self {
+        Self { start: e.start, end: e.end, text: e.text, label: e.label.into(),
+               score: e.score as f64, linked_id: e.linked_id }
+    }
+}
+
+#[derive(SimpleObject)]
+pub struct GqlNlpDoc {
+    pub text: String,
+    pub tokens: Vec<GqlToken>,
+    pub entities: Vec<GqlEntity>,
+}
+impl From<locus_nlp::NlpDoc> for GqlNlpDoc {
+    fn from(d: locus_nlp::NlpDoc) -> Self {
+        Self {
+            text: d.text,
+            tokens: d.tokens.into_iter().map(GqlToken::from).collect(),
+            entities: d.entities.into_iter().map(GqlEntity::from).collect(),
+        }
+    }
 }
 
 // ── Query root ────────────────────────────────────────────────────────────
@@ -412,6 +503,14 @@ impl MutationRoot {
             g.record_transition(&from_id, &to_id).await;
             true
         } else { false }
+    }
+
+    /// Parse a natural-language input through the NLP pipeline and return
+    /// the annotated document (tokens + entities).
+    async fn parse_intent(&self, ctx: &Context<'_>, input: String) -> GqlResult<GqlNlpDoc> {
+        let s = st(ctx);
+        let nlp_doc = s.nlp.analyze(&input).await.map_err(|e| Error::new(e.to_string()))?;
+        Ok(GqlNlpDoc::from(nlp_doc))
     }
 }
 

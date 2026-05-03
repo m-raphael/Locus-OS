@@ -2665,6 +2665,7 @@ dependencies = [
  "axum",
  "dotenvy",
  "locus-agent",
+ "locus-nlp",
  "locus-parser",
  "serde",
  "serde_json",

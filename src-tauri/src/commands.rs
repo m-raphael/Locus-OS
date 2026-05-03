@@ -6,14 +6,28 @@ use locus_parser::IntentJson;
 use spaces_core::{AttentionMode, AuditLog, CollabSignal, Db, Flow, FocusGoal, InstalledPlugin, Memory, Module, PredictedSpace, Simulation, SimulationResult, SpaceSummary};
 use spaces_core::GraphDb;
 use tauri::State;
+use std::sync::Arc;
+use serde::Serialize;
 
 pub struct AppDb(pub Db);
 pub struct AppGovernance(pub GovernanceEngine);
 pub struct AppGraph(pub Option<GraphDb>);
+pub struct AppNlp(pub Arc<dyn locus_nlp::NlpPipeline>);
+
+#[derive(Serialize)]
+pub struct ParseIntentResult {
+    pub intent: IntentJson,
+    pub nlp: locus_nlp::NlpDoc,
+}
 
 #[tauri::command]
-pub fn parse_intent(input: String) -> IntentJson {
-    locus_parser::parse(&input)
+pub async fn parse_intent(
+    nlp: State<'_, AppNlp>,
+    input: String,
+) -> Result<ParseIntentResult, String> {
+    let intent = locus_parser::parse(&input);
+    let nlp_doc = nlp.0.analyze(&input).await.map_err(|e| e.to_string())?;
+    Ok(ParseIntentResult { intent, nlp: nlp_doc })
 }
 
 #[tauri::command]

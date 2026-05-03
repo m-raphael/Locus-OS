@@ -22,8 +22,8 @@ use axum::{
 
 use crate::gql::{build_schema, LocusSchema};
 
-pub async fn serve(db: spaces_core::Db, graph: Option<spaces_core::GraphDb>) {
-    let schema = build_schema(db, graph);
+pub async fn serve(db: spaces_core::Db, graph: Option<spaces_core::GraphDb>, nlp: std::sync::Arc<dyn locus_nlp::NlpPipeline>) {
+    let schema = build_schema(db, graph, nlp);
 
     let mut app = Router::new()
         .route("/graphql", post(graphql_handler))

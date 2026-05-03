@@ -17,6 +17,7 @@ serde_json = "1"
 locus-parser = { path = "../crates/locus-parser" }
 spaces-core = { path = "../crates/spaces-core" }
 locus-agent = { path = "../crates/locus-agent" }
+locus-nlp = { path = "../crates/locus-nlp" }
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 async-graphql = "7"
