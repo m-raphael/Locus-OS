@@ -1,0 +1,8 @@
+{
+  "input": "open Slack with Sarah at 3pm",
+  "expected_entities": [
+    { "text": "Slack", "label": "Org" },
+    { "text": "Sarah", "label": "Person" },
+    { "text": "3pm",   "label": "Time" }
+  ]
+}

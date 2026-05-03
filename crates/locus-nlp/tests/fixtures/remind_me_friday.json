@@ -1,0 +1,6 @@
+{
+  "input": "remind me to call mum on Friday",
+  "expected_entities": [
+    { "text": "Friday", "label": "Date" }
+  ]
+}

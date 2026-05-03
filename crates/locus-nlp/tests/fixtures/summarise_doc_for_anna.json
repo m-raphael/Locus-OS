@@ -1,0 +1,6 @@
+{
+  "input": "summarise the Q2 report for Anna",
+  "expected_entities": [
+    { "text": "Anna", "label": "Person" }
+  ]
+}
