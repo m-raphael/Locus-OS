@@ -5,6 +5,7 @@ pub mod scheduler;
 
 use locus_parser::{IntentJson, Verb};
 use serde::{Deserialize, Serialize};
+use spaces_core::SpaceMeta;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -19,6 +20,10 @@ pub type Result<T> = std::result::Result<T, AgentError>;
 pub struct AgentContext {
     pub intent: IntentJson,
     pub active_space_id: Option<String>,
+    /// Optional Space metadata derived upstream from an `NlpDoc` (Phase A.4b).
+    /// Empty by default so non-NLP callers stay source-compatible.
+    #[serde(default)]
+    pub space_meta: SpaceMeta,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,6 +33,8 @@ pub enum AgentAction {
         description: String,
         mode: String,
         ephemeral: bool,
+        #[serde(default)]
+        meta: SpaceMeta,
     },
     SetMode {
         space_id: String,
@@ -74,6 +81,7 @@ pub fn route(ctx: &AgentContext) -> AgentResult {
                     description,
                     mode: "open".into(),
                     ephemeral: false,
+                    meta: ctx.space_meta.clone(),
                 },
                 new_space_id: None,
                 suggested_next: None,
@@ -92,6 +100,7 @@ pub fn route(ctx: &AgentContext) -> AgentResult {
                     description,
                     mode: "open".into(),
                     ephemeral: true,
+                    meta: ctx.space_meta.clone(),
                 },
                 new_space_id: None,
                 suggested_next: None,
@@ -151,10 +160,13 @@ pub async fn execute(mut result: AgentResult, db: &spaces_core::Db) -> Result<Ag
             description,
             mode,
             ephemeral,
+            meta,
         } => {
             let intent_id = db.create_intent(description).await?;
             let mode_enum = spaces_core::AttentionMode::from_str(mode);
-            let space_id = db.create_space(&intent_id, mode_enum, *ephemeral).await?;
+            let space_id = db
+                .create_space(&intent_id, mode_enum, *ephemeral, meta.clone())
+                .await?;
             db.add_flow(&space_id, 0).await?;
             result.new_space_id = Some(space_id);
         }
@@ -187,6 +199,7 @@ fn noop(reason: &str, confidence: f32) -> AgentResult {
 pub async fn run(
     input: &str,
     active_space_id: Option<String>,
+    space_meta: SpaceMeta,
     db: &spaces_core::Db,
     nim_api_key: Option<&str>,
     npu_model_path: Option<&std::path::Path>,
@@ -207,7 +220,7 @@ pub async fn run(
         scheduler::Backend::Keyword => (locus_parser::parse(input), None),
     };
 
-    let ctx = AgentContext { intent, active_space_id };
+    let ctx = AgentContext { intent, active_space_id, space_meta };
     let routed = route(&ctx);
     let mut result = execute(routed, db).await?;
 
@@ -228,6 +241,7 @@ mod tests {
         AgentContext {
             intent: parse(input),
             active_space_id: space_id.map(str::to_string),
+            space_meta: SpaceMeta::default(),
         }
     }
 

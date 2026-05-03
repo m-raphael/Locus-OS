@@ -9,6 +9,7 @@
 ///   → OrchestratorResult: two spaces, primary = first high-confidence task
 use crate::{run, AgentResult};
 use serde::{Deserialize, Serialize};
+use spaces_core::SpaceMeta;
 use std::path::Path;
 
 /// A single sub-task within an orchestrated plan.
@@ -47,9 +48,15 @@ pub fn decompose(input: &str) -> Vec<String> {
 
 /// Run each sub-task sequentially (parallel requires Send bounds; sequential is safe for P0).
 /// Tasks that fail individually are recorded with their error; others continue.
+///
+/// `space_meta` is applied to every sub-task that creates a Space. Phase A.4b
+/// uses the same meta everywhere because it derives from the original
+/// utterance's NlpDoc; later phases may re-tokenize per sub-prompt and pass
+/// per-task metadata.
 pub async fn orchestrate(
     input: &str,
     active_space_id: Option<String>,
+    space_meta: SpaceMeta,
     db: &spaces_core::Db,
     nim_api_key: Option<&str>,
     npu_model_path: Option<&Path>,
@@ -63,6 +70,7 @@ pub async fn orchestrate(
         let result = run(
             &prompt,
             active_space_id.clone(),
+            space_meta.clone(),
             db,
             nim_api_key,
             npu_model_path,

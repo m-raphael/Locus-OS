@@ -20,6 +20,70 @@ pub struct ParseIntentResult {
     pub nlp: locus_nlp::NlpDoc,
 }
 
+/// Translate NLP entity findings into Space metadata.
+///
+/// - `Person` → `participants`
+/// - `Org` / `Product` → `topic_tags`
+/// - `Time` / `Date` → `scheduled_at` (best-effort parse; unset on failure)
+fn nlp_to_meta(doc: &locus_nlp::NlpDoc) -> spaces_core::SpaceMeta {
+    let mut participants = Vec::new();
+    let mut topic_tags = Vec::new();
+    let mut scheduled_at: Option<i64> = None;
+
+    for e in &doc.entities {
+        match e.label {
+            locus_nlp::EntityLabel::Person => participants.push(e.text.clone()),
+            locus_nlp::EntityLabel::Org | locus_nlp::EntityLabel::Product => {
+                topic_tags.push(e.text.clone())
+            }
+            locus_nlp::EntityLabel::Time | locus_nlp::EntityLabel::Date => {
+                if scheduled_at.is_none() {
+                    scheduled_at = parse_time_phrase(&e.text);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    spaces_core::SpaceMeta { participants, scheduled_at, topic_tags }
+}
+
+/// Best-effort parser for short clock phrases like "3pm", "10am",
+/// "2:30pm", "14:00". Returns a unix-second timestamp anchored to today
+/// (UTC) when a match is found, otherwise `None`. Anything richer
+/// (weekdays, "next Friday", relative offsets) is left for Phase B+.
+fn parse_time_phrase(text: &str) -> Option<i64> {
+    use chrono::{Datelike, Local, NaiveTime, TimeZone};
+
+    let s = text.trim().to_ascii_lowercase();
+    let (rest, am_pm) = if let Some(r) = s.strip_suffix("pm") {
+        (r.trim().to_string(), Some(true))
+    } else if let Some(r) = s.strip_suffix("am") {
+        (r.trim().to_string(), Some(false))
+    } else {
+        (s.clone(), None)
+    };
+
+    let (hour, minute) = if let Some((h, m)) = rest.split_once(':') {
+        (h.parse::<u32>().ok()?, m.parse::<u32>().ok()?)
+    } else {
+        (rest.parse::<u32>().ok()?, 0u32)
+    };
+
+    let hour24 = match am_pm {
+        Some(true) if hour < 12 => hour + 12,
+        Some(false) if hour == 12 => 0,
+        _ => hour,
+    };
+    if hour24 >= 24 || minute >= 60 { return None; }
+
+    let now = Local::now();
+    let nt = NaiveTime::from_hms_opt(hour24, minute, 0)?;
+    let nd = chrono::NaiveDate::from_ymd_opt(now.year(), now.month(), now.day())?;
+    let ndt = chrono::NaiveDateTime::new(nd, nt);
+    Local.from_local_datetime(&ndt).single().map(|dt| dt.timestamp())
+}
+
 #[tauri::command]
 pub async fn parse_intent(
     nlp: State<'_, AppNlp>,
@@ -47,7 +111,7 @@ pub async fn create_space(
     // Log structural metadata only — never the user-supplied description, which
     // can contain PII or secrets.
     let details = format!("mode={mode_enum:?} ephemeral={ephemeral} desc_len={}", description.len());
-    let space_id = db.0.create_space(&intent_id, mode_enum, ephemeral).await
+    let space_id = db.0.create_space(&intent_id, mode_enum, ephemeral, spaces_core::SpaceMeta::default()).await
         .map_err(|e| e.to_string())?;
     let _ = db.0.log_audit_event(
         "space_created",
@@ -74,6 +138,7 @@ pub async fn set_space_mode(
 pub async fn run_agent(
     db: State<'_, AppDb>,
     gov: State<'_, AppGovernance>,
+    nlp: State<'_, AppNlp>,
     input: String,
     active_space_id: Option<String>,
     app: tauri::AppHandle,
@@ -101,7 +166,7 @@ pub async fn run_agent(
             // Create a Space in DB to represent the legacy app context
             let intent_id = db.0.create_intent(&found.name).await.map_err(|e| e.to_string())?;
             let space_id = db.0
-                .create_space(&intent_id, spaces_core::AttentionMode::Open, false)
+                .create_space(&intent_id, spaces_core::AttentionMode::Open, false, spaces_core::SpaceMeta::default())
                 .await
                 .map_err(|e| e.to_string())?;
             db.0.add_flow(&space_id, 0).await.map_err(|e| e.to_string())?;
@@ -125,9 +190,15 @@ pub async fn run_agent(
         .app_data_dir()
         .ok()
         .map(|d| d.join("models").join("locus-intent.mlmodel"));
+    // Phase A.4b: derive Space metadata from NLP entities so the new
+    // :Space carries participants / scheduled_at / topic_tags.
+    let nlp_doc = nlp.0.analyze(&input).await.map_err(|e| e.to_string())?;
+    let meta = nlp_to_meta(&nlp_doc);
+
     let result = locus_agent::run(
         &input,
         active_space_id,
+        meta,
         &db.0,
         nim_key.as_deref(),
         model_path.as_deref(),
@@ -266,6 +337,7 @@ pub fn governance_summary(gov: State<AppGovernance>) -> GovernanceSummary {
 #[tauri::command]
 pub async fn run_orchestrator(
     db: State<'_, AppDb>,
+    nlp: State<'_, AppNlp>,
     input: String,
     active_space_id: Option<String>,
     app: tauri::AppHandle,
@@ -276,9 +348,12 @@ pub async fn run_orchestrator(
         .app_data_dir()
         .ok()
         .map(|d| d.join("models").join("locus-intent.mlmodel"));
+    let nlp_doc = nlp.0.analyze(&input).await.map_err(|e| e.to_string())?;
+    let meta = nlp_to_meta(&nlp_doc);
     Ok(locus_agent::orchestrator::orchestrate(
         &input,
         active_space_id,
+        meta,
         &db.0,
         nim_key.as_deref(),
         model_path.as_deref(),
@@ -458,4 +533,70 @@ pub async fn graph_record_transition(
         g.record_transition(&from_id, &to_id).await;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod nlp_meta_tests {
+    use super::{nlp_to_meta, parse_time_phrase};
+    use locus_nlp::{Entity, EntityLabel, NlpDoc};
+
+    fn ent(text: &str, label: EntityLabel) -> Entity {
+        Entity {
+            start: 0, end: text.len(),
+            text: text.to_owned(),
+            label, score: 0.99, linked_id: None,
+        }
+    }
+
+    #[test]
+    fn person_becomes_participant() {
+        let doc = NlpDoc { entities: vec![ent("Sarah", EntityLabel::Person)], ..NlpDoc::default() };
+        assert_eq!(nlp_to_meta(&doc).participants, vec!["Sarah"]);
+    }
+
+    #[test]
+    fn org_and_product_become_topic_tags() {
+        let doc = NlpDoc {
+            entities: vec![ent("Slack", EntityLabel::Org), ent("iPhone", EntityLabel::Product)],
+            ..NlpDoc::default()
+        };
+        assert_eq!(nlp_to_meta(&doc).topic_tags, vec!["Slack", "iPhone"]);
+    }
+
+    #[test]
+    fn first_time_entity_wins_for_scheduled_at() {
+        let doc = NlpDoc {
+            entities: vec![ent("3pm", EntityLabel::Time), ent("4pm", EntityLabel::Time)],
+            ..NlpDoc::default()
+        };
+        let meta = nlp_to_meta(&doc);
+        assert!(meta.scheduled_at.is_some(), "3pm should parse");
+    }
+
+    #[test]
+    fn loc_misc_money_are_ignored_for_now() {
+        let doc = NlpDoc {
+            entities: vec![
+                ent("London", EntityLabel::Loc),
+                ent("$50", EntityLabel::Money),
+                ent("anything", EntityLabel::Misc),
+            ],
+            ..NlpDoc::default()
+        };
+        let m = nlp_to_meta(&doc);
+        assert!(m.participants.is_empty());
+        assert!(m.topic_tags.is_empty());
+        assert!(m.scheduled_at.is_none());
+    }
+
+    #[test]
+    fn parse_time_phrase_handles_common_forms() {
+        assert!(parse_time_phrase("3pm").is_some());
+        assert!(parse_time_phrase("10am").is_some());
+        assert!(parse_time_phrase("2:30pm").is_some());
+        assert!(parse_time_phrase("14:00").is_some());
+        assert!(parse_time_phrase("Friday").is_none());     // weekday — Phase B+
+        assert!(parse_time_phrase("not a time").is_none());
+        assert!(parse_time_phrase("25:00").is_none());      // out of range
+    }
 }

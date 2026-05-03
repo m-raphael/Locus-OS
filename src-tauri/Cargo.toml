@@ -23,3 +23,4 @@ tokio = { version = "1", features = ["full"] }
 async-graphql = "7"
 async-graphql-axum = "7"
 dotenvy = "0.15"
+chrono = "0.4"

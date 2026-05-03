@@ -41,12 +41,18 @@ pub struct Space {
     pub description: String,
     pub attention_mode: String,
     pub is_ephemeral: bool,
+    pub participants: Vec<String>,
+    pub scheduled_at: Option<i64>,
+    pub topic_tags: Vec<String>,
 }
 impl From<spaces_core::SpaceSummary> for Space {
     fn from(s: spaces_core::SpaceSummary) -> Self {
         Self { id: s.id, description: s.description,
                attention_mode: s.attention_mode.as_str().to_string(),
-               is_ephemeral: s.is_ephemeral }
+               is_ephemeral: s.is_ephemeral,
+               participants: s.participants,
+               scheduled_at: s.scheduled_at,
+               topic_tags: s.topic_tags }
     }
 }
 
@@ -371,7 +377,7 @@ impl MutationRoot {
         let s = st(ctx);
         let intent_id = s.db.create_intent(&description).await.map_err(to_gql)?;
         let mode_enum = spaces_core::AttentionMode::from_str(&mode);
-        let space_id = s.db.create_space(&intent_id, mode_enum, ephemeral).await.map_err(to_gql)?;
+        let space_id = s.db.create_space(&intent_id, mode_enum, ephemeral, spaces_core::SpaceMeta::default()).await.map_err(to_gql)?;
         // Audit log records structural metadata only — never the user-supplied description.
         let _ = s.db.log_audit_event("space_created", Some("locus_user"),
             Some(&space_id), Some(&format!("mode={mode} ephemeral={ephemeral} desc_len={}", description.len()))).await;

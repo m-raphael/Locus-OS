@@ -37,6 +37,12 @@ fn de_bool(row: &neo4rs::Row, k: &str) -> Result<bool> {
 fn de_opt(row: &neo4rs::Row, k: &str) -> Option<String> {
     row.get::<String>(k).ok().filter(|s| !s.is_empty())
 }
+fn de_vec_string(row: &neo4rs::Row, k: &str) -> Vec<String> {
+    row.get::<Vec<String>>(k).unwrap_or_default()
+}
+fn de_opt_i64(row: &neo4rs::Row, k: &str) -> Option<i64> {
+    row.get::<i64>(k).ok()
+}
 
 // ── Domain types ──────────────────────────────────────────────────────────
 
@@ -66,12 +72,31 @@ pub struct Intent { pub id: String, pub description: String, pub created_at: i64
 pub struct Space {
     pub id: String, pub intent_id: String,
     pub attention_mode: AttentionMode, pub is_ephemeral: bool,
+    #[serde(default)] pub participants: Vec<String>,
+    #[serde(default)] pub scheduled_at: Option<i64>,
+    #[serde(default)] pub topic_tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpaceSummary {
     pub id: String, pub description: String,
     pub attention_mode: AttentionMode, pub is_ephemeral: bool,
+    #[serde(default)] pub participants: Vec<String>,
+    #[serde(default)] pub scheduled_at: Option<i64>,
+    #[serde(default)] pub topic_tags: Vec<String>,
+}
+
+/// Optional metadata attached to a Space at creation time.
+///
+/// Phase A.4 populates these from `locus_nlp::NlpDoc` entities — Person
+/// → `participants`, Date/Time → `scheduled_at`, Org/Product → `topic_tags`.
+/// All fields default to empty so existing callers can keep using
+/// `SpaceMeta::default()` until they have an `NlpDoc` to draw from.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct SpaceMeta {
+    pub participants: Vec<String>,
+    pub scheduled_at: Option<i64>,
+    pub topic_tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -187,15 +212,25 @@ impl Db {
 
     // ── Spaces ────────────────────────────────────────────────────────────
 
-    pub async fn create_space(&self, intent_id: &str, mode: AttentionMode, is_ephemeral: bool) -> Result<String> {
+    pub async fn create_space(
+        &self,
+        intent_id: &str,
+        mode: AttentionMode,
+        is_ephemeral: bool,
+        meta: SpaceMeta,
+    ) -> Result<String> {
         let id = Uuid::new_v4().to_string();
         let ts = chrono::Utc::now().timestamp();
         self.0.run(
             query("MATCH (i:Intent {id:$iid}) \
-                   CREATE (s:Space {id:$id, intent_id:$iid, attention_mode:$m, is_ephemeral:$e, created_at:$ts})\
+                   CREATE (s:Space {id:$id, intent_id:$iid, attention_mode:$m, is_ephemeral:$e, created_at:$ts, \
+                                    participants:$pp, scheduled_at:$sa, topic_tags:$tt})\
                    -[:FOR_INTENT]->(i)")
                 .param("iid", intent_id).param("id", id.clone())
-                .param("m", mode.as_str()).param("e", is_ephemeral).param("ts", ts),
+                .param("m", mode.as_str()).param("e", is_ephemeral).param("ts", ts)
+                .param("pp", meta.participants)
+                .param("sa", meta.scheduled_at)
+                .param("tt", meta.topic_tags),
         ).await?;
         Ok(id)
     }
@@ -203,7 +238,10 @@ impl Db {
     pub async fn list_spaces(&self) -> Result<Vec<SpaceSummary>> {
         let mut r = self.0.execute(
             query("MATCH (s:Space)-[:FOR_INTENT]->(i:Intent) \
-                   RETURN s.id AS id, i.description AS desc, s.attention_mode AS mode, s.is_ephemeral AS eph \
+                   RETURN s.id AS id, i.description AS desc, s.attention_mode AS mode, s.is_ephemeral AS eph, \
+                          coalesce(s.participants, []) AS participants, \
+                          s.scheduled_at AS scheduled_at, \
+                          coalesce(s.topic_tags, []) AS topic_tags \
                    ORDER BY s.created_at DESC"),
         ).await?;
         let mut out = vec![];
@@ -212,6 +250,9 @@ impl Db {
                 id: de(&row, "id")?, description: de(&row, "desc")?,
                 attention_mode: AttentionMode::from_str(&de(&row, "mode")?),
                 is_ephemeral: de_bool(&row, "eph")?,
+                participants: de_vec_string(&row, "participants"),
+                scheduled_at: de_opt_i64(&row, "scheduled_at"),
+                topic_tags: de_vec_string(&row, "topic_tags"),
             });
         }
         Ok(out)
@@ -220,7 +261,10 @@ impl Db {
     pub async fn get_space(&self, id: &str) -> Result<Space> {
         let mut r = self.0.execute(
             query("MATCH (s:Space {id:$id}) \
-                   RETURN s.id AS id, s.intent_id AS iid, s.attention_mode AS mode, s.is_ephemeral AS eph")
+                   RETURN s.id AS id, s.intent_id AS iid, s.attention_mode AS mode, s.is_ephemeral AS eph, \
+                          coalesce(s.participants, []) AS participants, \
+                          s.scheduled_at AS scheduled_at, \
+                          coalesce(s.topic_tags, []) AS topic_tags")
                 .param("id", id),
         ).await?;
         if let Ok(Some(row)) = r.next().await {
@@ -228,6 +272,9 @@ impl Db {
                 id: de(&row, "id")?, intent_id: de(&row, "iid")?,
                 attention_mode: AttentionMode::from_str(&de(&row, "mode")?),
                 is_ephemeral: de_bool(&row, "eph")?,
+                participants: de_vec_string(&row, "participants"),
+                scheduled_at: de_opt_i64(&row, "scheduled_at"),
+                topic_tags: de_vec_string(&row, "topic_tags"),
             })
         } else {
             Err(SpacesError::NotFound(id.to_string()))
