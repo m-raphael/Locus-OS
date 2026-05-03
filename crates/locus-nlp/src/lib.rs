@@ -1,0 +1,33 @@
+//! Locus-OS NLP pipeline.
+//!
+//! Single public trait (`NlpPipeline`) with two implementations:
+//!
+//! - [`LocalPipeline`] — fully offline, runs on CPU. Phase A populates POS
+//!   and NER; later phases add keywords, embeddings, coref, entity linking.
+//! - [`NimPipeline`] — NVIDIA NIM-backed. Stubbed in Phase A; wired in
+//!   Phase F with a fallback to `LocalPipeline` on failure or timeout.
+//!
+//! Pick one with the [`pipeline`] factory, which inspects the environment
+//! at construction time. Today (Phase A) it always returns
+//! [`LocalPipeline`].
+
+pub mod local;
+pub mod models;
+pub mod ner;
+pub mod nim;
+pub mod pipeline;
+pub mod pos;
+
+pub use local::LocalPipeline;
+pub use nim::NimPipeline;
+pub use pipeline::{
+    CorefChain, Entity, EntityLabel, Keyword, NlpDoc, NlpError, NlpPipeline, PosTag, Result, Token,
+};
+
+use std::sync::Arc;
+
+/// Construct the default pipeline for this build. Phase A: always Local.
+/// Phase F will switch to `NimPipeline` when `NVIDIA_API_KEY` is set.
+pub fn pipeline() -> Arc<dyn NlpPipeline> {
+    Arc::new(LocalPipeline::new_default())
+}
