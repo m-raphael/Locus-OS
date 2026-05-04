@@ -24,6 +24,14 @@ export {
 } from "./PredictionBoard";
 
 export { LandingHero, type LandingHeroProps, type IntentChip } from "./LandingHero";
+export {
+  SimulationBoard,
+  type SimulationBoardProps,
+  type Simulation,
+  type SimulationOutcome,
+  type SimulationStats,
+  type SimulationStatus,
+} from "./SimulationBoard";
 export { LongPressMenu, type LongPressMenuProps, type LongPressAction } from "./LongPressMenu";
 export { PluginCard, type PluginCardProps } from "./PluginCard";
 
