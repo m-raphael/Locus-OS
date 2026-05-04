@@ -78,6 +78,7 @@ pub fn run() {
             commands::create_module,
             commands::governance_summary,
             commands::split_compound_intent,
+            commands::extract_time_phrases,
             commands::run_orchestrator,
             commands::list_marketplace,
             commands::install_plugin,

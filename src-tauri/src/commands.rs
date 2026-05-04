@@ -336,6 +336,17 @@ pub async fn split_compound_intent(
     Ok(locus_nlp::split_compound(&doc))
 }
 
+// ── Time-phrase extraction (NLP B.2) ──────────────────────────────────────
+
+#[tauri::command]
+pub async fn extract_time_phrases(
+    nlp: State<'_, AppNlp>,
+    input: String,
+) -> Result<Vec<locus_nlp::TimeExpression>, String> {
+    let doc = nlp.0.analyze(&input).await.map_err(|e| e.to_string())?;
+    Ok(locus_nlp::extract_time_phrases(&doc))
+}
+
 // ── Governance (N15 / G5) ─────────────────────────────────────────────────
 
 #[tauri::command]

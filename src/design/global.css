@@ -1,0 +1,27 @@
+/*
+ * Locus-OS design system · global stylesheet
+ *
+ * Loaded by both the running app (src/main.tsx) and Storybook
+ * (.storybook/preview.tsx). Imports tokens, fonts, and keyframes; sets
+ * minimal base styles. All visual choices live in tokens.css — never
+ * hardcode colours/sizes here.
+ */
+
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";
+
+@import "./tokens.css";
+@import "./keyframes.css";
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--lotus-font-display, "Inter", system-ui, -apple-system, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  background: var(--lotus-bg-base);
+  color: var(--lotus-text);
+}

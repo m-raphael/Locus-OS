@@ -108,11 +108,11 @@ fn parse_relative(s: &str) -> Option<TimeKind> {
     let unit_str = caps.get(3)?.as_str();
 
     let unit = match unit_str.chars().next()? {
+        'm' if unit_str.contains("month") => TimeUnit::Months,
         'm' => TimeUnit::Minutes,
         'h' => TimeUnit::Hours,
         'd' => TimeUnit::Days,
         'w' => TimeUnit::Weeks,
-        'M' | 'm' if unit_str.contains("month") => TimeUnit::Months,
         _ => return None,
     };
 

@@ -1,0 +1,11 @@
+/* Placeholder — populated by task #6 (design tokens). */
+:root, .theme-vellum {
+  --lotus-bg-base: #f4f1ee;
+  --lotus-text: rgba(20, 22, 30, 0.94);
+  --lotus-accent: #7C7CF2;
+}
+.theme-moonlight {
+  --lotus-bg-base: #0c0d11;
+  --lotus-text: rgba(235, 238, 245, 0.94);
+  --lotus-accent: #9B8CFF;
+}

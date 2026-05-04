@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 .npm/
+storybook-static/
 
 # Rust/Tauri
 target/

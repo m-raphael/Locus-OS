@@ -26,6 +26,7 @@ pub use pipeline::{
     CorefChain, Entity, EntityLabel, Keyword, NlpDoc, NlpError, NlpPipeline, PosTag, Result, Token,
 };
 pub use split_compound::{split_compound, CompoundSplit};
+pub use time_phrase::{extract_time_phrases, Direction, TimeExpression, TimeKind, TimeUnit};
 
 use std::sync::Arc;
 

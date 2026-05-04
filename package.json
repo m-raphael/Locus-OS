@@ -12,7 +12,10 @@
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f neo4j",
     "db:reset": "docker compose down -v && docker compose up -d",
-    "app": "npm run db:up && cargo tauri dev"
+    "app": "npm run db:up && cargo tauri dev",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build -o storybook-static",
+    "tokens:export": "node scripts/export-design-tokens.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",
@@ -27,10 +30,17 @@
     "zustand": "^5"
   },
   "devDependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@storybook/addon-essentials": "^8.6.18",
+    "@storybook/addon-themes": "^8.6.18",
+    "@storybook/blocks": "^8.6.14",
+    "@storybook/react-vite": "^8.6.18",
     "@tauri-apps/cli": "^2",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@vitejs/plugin-react": "^4",
+    "storybook": "^8.6.18",
     "typescript": "^5",
     "vite": "^5"
   }
