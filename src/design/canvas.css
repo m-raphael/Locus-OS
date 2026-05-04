@@ -1,0 +1,92 @@
+/*
+ * LotusCanvas styles.
+ *
+ * Drives the atmospheric background that sits behind every Locus screen.
+ * Composition (bottom → top):
+ *   1. linear gradient base                                  (--lotus-bg-gradient)
+ *   2. three soft oklch radial blobs (accent + warm + cool)  (per-theme tokens)
+ *   3. optional SVG turbulence film grain                    (--lotus-grain-*)
+ *   4. radial vignette                                       (--lotus-bg-vignette)
+ *
+ * All values come from tokens; the component itself ships no hardcoded
+ * colours so theme switching is just a class on <html>.
+ */
+
+.lotus-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--lotus-bg-gradient);
+}
+
+.lotus-canvas__blobs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.lotus-canvas__blob {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.lotus-canvas__blob--a {
+  left: -12%;
+  top: -18%;
+  width: 70%;
+  height: 120%;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--lotus-accent) var(--lotus-blob-accent-strength, 33%), transparent),
+    transparent 60%
+  );
+  filter: blur(80px);
+}
+
+.lotus-canvas__blob--b {
+  right: -15%;
+  top: 10%;
+  width: 65%;
+  height: 110%;
+  background: radial-gradient(circle, var(--lotus-blob-warm), transparent 60%);
+  filter: blur(90px);
+}
+
+.lotus-canvas__blob--c {
+  left: 20%;
+  bottom: -25%;
+  width: 75%;
+  height: 120%;
+  background: radial-gradient(circle, var(--lotus-blob-cool), transparent 60%);
+  filter: blur(100px);
+}
+
+.lotus-canvas--ambient .lotus-canvas__blob--a { animation: lotusBlobA var(--lotus-motion-ambient, 22s) ease-in-out infinite; }
+.lotus-canvas--ambient .lotus-canvas__blob--b { animation: lotusBlobB 28s ease-in-out infinite; }
+.lotus-canvas--ambient .lotus-canvas__blob--c { animation: lotusBlobC 32s ease-in-out infinite; }
+
+.lotus-canvas__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--lotus-grain-opacity, 0.09);
+  mix-blend-mode: var(--lotus-grain-blend, multiply);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 200px 200px;
+}
+
+.lotus-canvas__vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--lotus-bg-vignette);
+}
+
+/* Per-theme tweaks — kept here (not in tokens.css) because they are
+   structural to the canvas only, not generic surface tokens. */
+.theme-moonlight {
+  --lotus-blob-accent-strength: 55%;
+  --lotus-grain-opacity: 0.18;
+  --lotus-grain-blend: screen;
+}
