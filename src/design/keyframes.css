@@ -1,2 +1,49 @@
-/* Placeholder — populated by task #6 (design tokens). The 7 lotus*
-   keyframes from LOTUS-OS Screens.html land here. */
+/*
+ * Locus-OS · motion keyframes
+ *
+ * Lifted verbatim from LOTUS-OS Screens.html. Components reference these
+ * by name via `animation: lotusFloatIn 700ms var(--lotus-motion-ease)`.
+ */
+
+@keyframes lotusFloatIn {
+  0%   { opacity: 0; transform: translateY(18px) scale(0.985); filter: blur(6px); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);     filter: blur(0); }
+}
+
+@keyframes lotusBob {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+  50%      { transform: translate(-50%, -50%) translateY(-6px); }
+}
+
+@keyframes lotusBlobA { 0%,100% { transform: translate(0,0)   scale(1); }   50% { transform: translate(6%, 4%)  scale(1.08); } }
+@keyframes lotusBlobB { 0%,100% { transform: translate(0,0)   scale(1); }   50% { transform: translate(-5%, 6%) scale(1.10); } }
+@keyframes lotusBlobC { 0%,100% { transform: translate(0,0)   scale(1); }   50% { transform: translate(4%, -5%) scale(0.95); } }
+
+@keyframes lotusFadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes lotusPulse  { 0%,100% { transform: scale(1);   opacity: 0.7; } 50% { transform: scale(1.4); opacity: 0.3; } }
+
+@keyframes lotusDrift  { 0%,100% { translate: 0 0; } 50% { translate: 0 -10px; } }
+
+/* z-axis push-back used by the Spaceflow → Flow transition. */
+@keyframes lotusSpaceRise {
+  0%   { transform: translateZ(-300px) translateY(60px); opacity: 0; filter: blur(10px); }
+  100% { transform: translateZ(0)       translateY(0);   opacity: 1; filter: blur(0); }
+}
+
+/* Stack-in (Spaceflow page apartment list). The second declaration in
+   the source HTML overrode the first; we keep the 3D-tilted variant. */
+@keyframes lotusStackIn {
+  0%   { transform: translate(-50%, 60px) scale(0.85) rotateX(8deg); opacity: 0; filter: blur(8px); }
+  100% { transform: translate(-50%, 0)    scale(1)    rotateX(0);    opacity: 1; filter: blur(0); }
+}
+
+@keyframes lotusRowIn {
+  0%   { transform: translateY(20px) scale(0.94); opacity: 0; }
+  100% { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+
+/* Locus command bar entry. */
+@keyframes lotusBarUp {
+  0%   { transform: scaleY(0); transform-origin: bottom; opacity: 0; }
+  100% { transform: scaleY(1); transform-origin: bottom; opacity: 1; }
+}

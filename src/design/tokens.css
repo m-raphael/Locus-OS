@@ -1,11 +1,125 @@
-/* Placeholder — populated by task #6 (design tokens). */
-:root, .theme-vellum {
-  --lotus-bg-base: #f4f1ee;
-  --lotus-text: rgba(20, 22, 30, 0.94);
-  --lotus-accent: #7C7CF2;
+/*
+ * Locus-OS · Design tokens (CSS custom properties)
+ *
+ * Two themes: .theme-vellum (light, default) and .theme-moonlight (dark).
+ * The set of tokens is identical between themes — only values change.
+ * Token sources of truth are documented in src/design/tokens.ts (typed
+ * mirror) and tokens/locus.tokens.json (W3C DTCG, used by Zeroheight).
+ *
+ * Naming: --lotus-{group}-{role}[-{variant}].
+ *   group ∈ { font, bg, surface, text, border, shadow, accent, entity, motion, radius, space }
+ */
+
+:root,
+.theme-vellum {
+  /* ── typography ──────────────────────────────────────────────────────── */
+  --lotus-font-display: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --lotus-font-mono:    "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  /* ── canvas / atmosphere ─────────────────────────────────────────────── */
+  --lotus-bg-base:  #f4f1ee;
+  --lotus-bg-mid:   #ebe9e6;
+  --lotus-bg-deep:  #e2dfdb;
+  --lotus-bg-gradient: linear-gradient(180deg, var(--lotus-bg-base) 0%, var(--lotus-bg-mid) 60%, var(--lotus-bg-deep) 100%);
+  --lotus-bg-vignette: radial-gradient(ellipse at center, transparent 60%, rgba(20,22,30,0.08) 100%);
+  --lotus-blob-warm: oklch(85% 0.05 30 / 0.55);
+  --lotus-blob-cool: oklch(82% 0.04 220 / 0.6);
+
+  /* ── glass surfaces (modules) ────────────────────────────────────────── */
+  --lotus-surface-base:    rgba(255, 255, 255, 0.62);
+  --lotus-surface-focused: rgba(255, 255, 255, 0.86);
+  --lotus-surface-blur:    28px;
+  --lotus-surface-saturate: 1.4;
+  --lotus-surface-hairline: rgba(20, 22, 30, 0.04);
+
+  /* ── text ───────────────────────────────────────────────────────────── */
+  --lotus-text:        rgba(20, 22, 30, 0.94);
+  --lotus-text-muted:  rgba(40, 44, 55, 0.55);
+  --lotus-text-faint:  rgba(40, 44, 55, 0.35);
+  --lotus-text-on-accent: #ffffff;
+
+  /* ── borders / hairlines ─────────────────────────────────────────────── */
+  --lotus-border-soft: rgba(20, 22, 30, 0.06);
+
+  /* ── shadows / elevation ─────────────────────────────────────────────── */
+  --lotus-shadow-glass:
+    0 0 0 1px var(--lotus-surface-hairline),
+    0 24px 60px -24px rgba(20, 22, 30, 0.18);
+  --lotus-shadow-glass-focused:
+    0 0 0 1px var(--lotus-surface-hairline),
+    0 30px 80px -20px rgba(124, 124, 242, 0.32),
+    0 12px 40px -16px rgba(20, 22, 30, 0.22);
+
+  /* ── accent (periwinkle) ────────────────────────────────────────────── */
+  --lotus-accent:        #7C7CF2;
+  --lotus-accent-strong: #5C5CDF;
+  --lotus-accent-soft:   rgba(124, 124, 242, 0.12);
+
+  /* ── entity-kind palette (NLP NER chips) ────────────────────────────── */
+  --lotus-entity-person:       oklch(70% 0.13 250);
+  --lotus-entity-organization: oklch(70% 0.14 150);
+  --lotus-entity-date:         oklch(72% 0.12 60);
+  --lotus-entity-topic:        oklch(70% 0.14 320);
+  --lotus-entity-place:        oklch(70% 0.13 30);
+
+  /* ── radius / spacing ───────────────────────────────────────────────── */
+  --lotus-radius-pill:    999px;
+  --lotus-radius-card:    28px;
+  --lotus-radius-control: 12px;
+  --lotus-radius-chip:    8px;
+
+  --lotus-space-1: 4px;
+  --lotus-space-2: 8px;
+  --lotus-space-3: 12px;
+  --lotus-space-4: 16px;
+  --lotus-space-5: 24px;
+  --lotus-space-6: 32px;
+  --lotus-space-7: 48px;
+  --lotus-space-8: 64px;
+
+  /* ── motion ─────────────────────────────────────────────────────────── */
+  --lotus-motion-fast:    180ms;
+  --lotus-motion-base:    320ms;
+  --lotus-motion-slow:    700ms;
+  --lotus-motion-ambient: 22000ms;
+  --lotus-motion-ease:    cubic-bezier(0.22, 0.9, 0.32, 1);
+  --lotus-motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --lotus-motion-stagger: 90ms;
 }
+
 .theme-moonlight {
-  --lotus-bg-base: #0c0d11;
-  --lotus-text: rgba(235, 238, 245, 0.94);
-  --lotus-accent: #9B8CFF;
+  --lotus-bg-base:  #0c0d11;
+  --lotus-bg-mid:   #0a0b0f;
+  --lotus-bg-deep:  #06070a;
+  --lotus-bg-gradient: linear-gradient(180deg, var(--lotus-bg-base) 0%, var(--lotus-bg-mid) 60%, var(--lotus-bg-deep) 100%);
+  --lotus-bg-vignette: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.45) 100%);
+  --lotus-blob-warm: oklch(70% 0.08 30 / 0.35);
+  --lotus-blob-cool: oklch(60% 0.08 220 / 0.32);
+
+  --lotus-surface-base:    rgba(22, 24, 30, 0.55);
+  --lotus-surface-focused: rgba(28, 30, 38, 0.78);
+  --lotus-surface-hairline: rgba(255, 255, 255, 0.06);
+
+  --lotus-text:        rgba(235, 238, 245, 0.94);
+  --lotus-text-muted:  rgba(220, 224, 235, 0.55);
+  --lotus-text-faint:  rgba(220, 224, 235, 0.32);
+  --lotus-text-on-accent: #0c0d11;
+
+  --lotus-border-soft: rgba(255, 255, 255, 0.08);
+
+  --lotus-shadow-glass:
+    0 0 0 1px var(--lotus-surface-hairline),
+    0 30px 80px -20px rgba(155, 140, 255, 0.32),
+    0 8px 30px -8px rgba(0, 0, 0, 0.6);
+  --lotus-shadow-glass-focused:
+    0 0 0 1px rgba(255, 255, 255, 0.10),
+    0 36px 96px -16px rgba(155, 140, 255, 0.45),
+    0 12px 40px -8px rgba(0, 0, 0, 0.7);
+
+  --lotus-accent:        #9B8CFF;
+  --lotus-accent-strong: #BCA8FF;
+  --lotus-accent-soft:   rgba(155, 140, 255, 0.18);
+
+  /* Entity hues are the same — they're tuned in oklch so they hold up
+     against both light and dark backgrounds without re-tinting. */
 }
