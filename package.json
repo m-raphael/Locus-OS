@@ -15,7 +15,7 @@
     "app": "npm run db:up && cargo tauri dev",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build -o storybook-static",
-    "tokens:export": "node scripts/export-design-tokens.mjs"
+    "tokens:lint": "node scripts/export-design-tokens.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.122.0",

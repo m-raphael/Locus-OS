@@ -1,0 +1,106 @@
+{
+  "$schema": "https://design-tokens.org/schemas/format/v1.json",
+  "$description": "Locus-OS · LOTUS design system. Keep in lockstep with src/design/tokens.css and src/design/tokens.ts. Run `npm run tokens:lint` before committing token changes.",
+  "color": {
+    "background": {
+      "vellum": {
+        "base": { "$value": "#f4f1ee", "$type": "color" },
+        "mid":  { "$value": "#ebe9e6", "$type": "color" },
+        "deep": { "$value": "#e2dfdb", "$type": "color" }
+      },
+      "moonlight": {
+        "base": { "$value": "#0c0d11", "$type": "color" },
+        "mid":  { "$value": "#0a0b0f", "$type": "color" },
+        "deep": { "$value": "#06070a", "$type": "color" }
+      }
+    },
+    "accent": {
+      "vellum": {
+        "base":   { "$value": "#7C7CF2", "$type": "color", "$description": "Periwinkle — single accent across Vellum surfaces." },
+        "strong": { "$value": "#5C5CDF", "$type": "color" },
+        "soft":   { "$value": "rgba(124, 124, 242, 0.12)", "$type": "color" }
+      },
+      "moonlight": {
+        "base":   { "$value": "#9B8CFF", "$type": "color", "$description": "Brighter periwinkle to read against the dark Moonlight canvas." },
+        "strong": { "$value": "#BCA8FF", "$type": "color" },
+        "soft":   { "$value": "rgba(155, 140, 255, 0.18)", "$type": "color" }
+      }
+    },
+    "text": {
+      "vellum": {
+        "body":     { "$value": "rgba(20, 22, 30, 0.94)", "$type": "color" },
+        "muted":    { "$value": "rgba(40, 44, 55, 0.55)", "$type": "color" },
+        "faint":    { "$value": "rgba(40, 44, 55, 0.35)", "$type": "color" },
+        "onAccent": { "$value": "#ffffff", "$type": "color" }
+      },
+      "moonlight": {
+        "body":     { "$value": "rgba(235, 238, 245, 0.94)", "$type": "color" },
+        "muted":    { "$value": "rgba(220, 224, 235, 0.55)", "$type": "color" },
+        "faint":    { "$value": "rgba(220, 224, 235, 0.32)", "$type": "color" },
+        "onAccent": { "$value": "#0c0d11", "$type": "color" }
+      }
+    },
+    "surface": {
+      "vellum": {
+        "base":     { "$value": "rgba(255, 255, 255, 0.62)", "$type": "color", "$description": "Resting glass module fill." },
+        "focused":  { "$value": "rgba(255, 255, 255, 0.86)", "$type": "color", "$description": "Focused glass module fill." },
+        "hairline": { "$value": "rgba(20, 22, 30, 0.04)",    "$type": "color" }
+      },
+      "moonlight": {
+        "base":     { "$value": "rgba(22, 24, 30, 0.55)", "$type": "color" },
+        "focused":  { "$value": "rgba(28, 30, 38, 0.78)", "$type": "color" },
+        "hairline": { "$value": "rgba(255, 255, 255, 0.06)", "$type": "color" }
+      }
+    },
+    "entity": {
+      "$description": "NER chip palette — oklch-tuned so it holds up in both themes.",
+      "person":       { "$value": "oklch(70% 0.13 250)", "$type": "color" },
+      "organization": { "$value": "oklch(70% 0.14 150)", "$type": "color" },
+      "date":         { "$value": "oklch(72% 0.12 60)",  "$type": "color" },
+      "topic":        { "$value": "oklch(70% 0.14 320)", "$type": "color" },
+      "place":        { "$value": "oklch(70% 0.13 30)",  "$type": "color" }
+    }
+  },
+  "fontFamily": {
+    "display": {
+      "$value": ["Inter", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+      "$type": "fontFamily"
+    },
+    "mono": {
+      "$value": ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "SF Mono", "Menlo", "monospace"],
+      "$type": "fontFamily"
+    }
+  },
+  "dimension": {
+    "radius": {
+      "pill":    { "$value": "999px", "$type": "dimension" },
+      "card":    { "$value": "28px",  "$type": "dimension" },
+      "control": { "$value": "12px",  "$type": "dimension" },
+      "chip":    { "$value": "8px",   "$type": "dimension" }
+    },
+    "space": {
+      "1": { "$value": "4px",  "$type": "dimension" },
+      "2": { "$value": "8px",  "$type": "dimension" },
+      "3": { "$value": "12px", "$type": "dimension" },
+      "4": { "$value": "16px", "$type": "dimension" },
+      "5": { "$value": "24px", "$type": "dimension" },
+      "6": { "$value": "32px", "$type": "dimension" },
+      "7": { "$value": "48px", "$type": "dimension" },
+      "8": { "$value": "64px", "$type": "dimension" }
+    },
+    "blur": {
+      "surface": { "$value": "28px", "$type": "dimension" }
+    }
+  },
+  "duration": {
+    "fast":    { "$value": "180ms",   "$type": "duration" },
+    "base":    { "$value": "320ms",   "$type": "duration" },
+    "slow":    { "$value": "700ms",   "$type": "duration" },
+    "ambient": { "$value": "22000ms", "$type": "duration" },
+    "stagger": { "$value": "90ms",    "$type": "duration", "$description": "Per-card delay for the cascading lotusFloatIn entry." }
+  },
+  "cubicBezier": {
+    "ease":    { "$value": [0.22, 0.9,  0.32, 1], "$type": "cubicBezier", "$description": "Default ease for surface motion." },
+    "easeOut": { "$value": [0.16, 1,    0.30, 1], "$type": "cubicBezier" }
+  }
+}
