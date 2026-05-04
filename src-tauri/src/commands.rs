@@ -336,6 +336,27 @@ pub async fn split_compound_intent(
     Ok(locus_nlp::split_compound(&doc))
 }
 
+/// Combined single-pass NLP query: returns compound split + entities in
+/// one inference call so the frontend does not pay two model round-trips
+/// per keystroke.
+#[derive(Serialize)]
+pub struct QueryAnalysis {
+    pub compound: locus_nlp::CompoundSplit,
+    pub entities: Vec<locus_nlp::Entity>,
+}
+
+#[tauri::command]
+pub async fn analyze_query(
+    nlp: State<'_, AppNlp>,
+    input: String,
+) -> Result<QueryAnalysis, String> {
+    let doc = nlp.0.analyze(&input).await.map_err(|e| e.to_string())?;
+    Ok(QueryAnalysis {
+        compound: locus_nlp::split_compound(&doc),
+        entities: doc.entities,
+    })
+}
+
 // ── Time-phrase extraction (NLP B.2) ──────────────────────────────────────
 
 #[tauri::command]

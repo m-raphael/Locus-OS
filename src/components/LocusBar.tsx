@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, KeyboardEvent, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { invoke } from "@tauri-apps/api/core";
 import { useLocusStore, buildSuggestions, Suggestion, SpaceSummary } from "../store";
+import EntityChips from "./EntityChips";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
 
 interface Memory { id: string; content: string; created_at: number; }
@@ -20,6 +21,10 @@ interface OrchestratorResult {
 }
 
 interface CompoundSplit { is_compound: boolean; count: number; parts: string[]; }
+
+export type EntityLabel = "Person" | "Org" | "Loc" | "Time" | "Date" | "Money" | "Product" | "Misc";
+export interface NlpEntity { start: number; end: number; text: string; label: EntityLabel; score: number; linked_id: string | null; }
+interface QueryAnalysis { compound: CompoundSplit; entities: NlpEntity[]; }
 
 const dropdownVariants = {
   hidden: { opacity: 0, scaleY: 0.92, originY: 1 },
@@ -57,6 +62,7 @@ export default function LocusBar() {
   const [orchestrating, setOrchestrating] = useState(false);
   const [orchTasks, setOrchTasks] = useState<OrchestratorResult["tasks"]>([]);
   const [compoundSplit, setCompoundSplit] = useState<CompoundSplit | null>(null);
+  const [nlpEntities, setNlpEntities] = useState<NlpEntity[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const { activeSpaceLabel, activeSpaceId, accent, setSpaces, setActiveSpace, setBarFocused, updateSpaceMode, setSuggestedNext, setLegacyAppContext } = useLocusStore();
 
@@ -76,14 +82,15 @@ export default function LocusBar() {
     load();
   }, [query, active]);
 
-  // NLP-based compound-intent detection (debounced)
+  // Single NLP pass: compound detection + entity extraction (debounced)
   useEffect(() => {
-    if (!query.trim()) { setCompoundSplit(null); return; }
+    if (!query.trim()) { setCompoundSplit(null); setNlpEntities([]); return; }
     const t = setTimeout(async () => {
       try {
-        const split = await invoke<CompoundSplit>("split_compound_intent", { input: query });
-        setCompoundSplit(split);
-      } catch { setCompoundSplit(null); }
+        const analysis = await invoke<QueryAnalysis>("analyze_query", { input: query });
+        setCompoundSplit(analysis.compound);
+        setNlpEntities(analysis.entities);
+      } catch { setCompoundSplit(null); setNlpEntities([]); }
     }, 300);
     return () => clearTimeout(t);
   }, [query]);
@@ -369,6 +376,9 @@ export default function LocusBar() {
         </motion.div>
       )}
       </AnimatePresence>
+
+      {/* NLP entity chips */}
+      <EntityChips entities={nlpEntities} />
 
       {/* Locus pill */}
       <motion.div
