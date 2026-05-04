@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 
 export interface ModuleProps {
   idx: number;
@@ -33,62 +34,81 @@ export function ModuleHeader({ kind, source, time }: { kind: string; source: str
 
 export function ModuleAction({ children, primary, accent, onClick }: { children: React.ReactNode; primary?: boolean; accent: string; onClick?: () => void }) {
   return (
-    <button
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       onClick={(e) => { e.stopPropagation(); onClick?.(); }}
       style={{
         padding: "8px 16px", fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em",
         borderRadius: 999, border: "none", cursor: "pointer",
         background: primary ? accent : "var(--chip-bg)",
         color: primary ? "#fff" : "var(--text)",
-        transition: `all 300ms var(--motion-ui)`,
       }}
-    >{children}</button>
+    >{children}</motion.button>
   );
 }
 
 export default function ModuleShell({ idx, focused, anyFocused, accent, onFocus, dashed, children }: ModuleProps) {
   const dimmed = anyFocused && !focused;
 
+  const baseStyle: React.CSSProperties = {
+    width: "var(--density-module-width)",
+    minHeight: "var(--density-module-minh)",
+    borderRadius: "var(--module-radius)",
+    flexShrink: 0,
+    cursor: "pointer",
+    opacity: dimmed ? 0.42 : 1,
+    filter: dimmed ? "blur(2px)" : "none",
+  };
+
   if (dashed) {
     return (
-      <div
+      <motion.div
         onClick={onFocus}
+        initial={{ opacity: 0, y: 24 }}
+        animate={{
+          opacity: dimmed ? 0.42 : 1,
+          y: focused ? -10 : 0,
+          scale: focused ? 1.025 : 1,
+          filter: dimmed ? "blur(2px)" : "blur(0px)",
+        }}
+        transition={{ type: "spring", stiffness: 300, damping: 24, delay: idx * 0.07 }}
         style={{
-          width: "var(--density-module-width)", minHeight: "var(--density-module-minh)", borderRadius: "var(--module-radius)", flexShrink: 0,
-          cursor: "pointer", position: "relative", overflow: "hidden",
+          ...baseStyle,
           background: "var(--glass-bg)",
           backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-          border: `1.5px dashed rgba(128,128,128,0.25)`,
-          opacity: dimmed ? 0.42 : 1,
-          filter: dimmed ? "blur(2px)" : "none",
-          transform: focused ? "translateY(-10px) scale(1.025)" : "translateY(0) scale(1)",
-          transition: `opacity 500ms var(--motion-ui), filter 500ms var(--motion-ui), transform 500ms var(--motion-ui)`,
-          animation: `lotusFloatIn 700ms var(--motion-float) ${idx * 90}ms backwards`,
+          border: "1.5px dashed rgba(128,128,128,0.25)",
         }}
       >
         {children}
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div
+    <motion.div
       onClick={onFocus}
-      style={{
-        width: "var(--density-module-width)", minHeight: "var(--density-module-minh)", borderRadius: "var(--module-radius)", flexShrink: 0,
-        cursor: "pointer",
-        background: focused ? "var(--glass-focused)" : "var(--glass-bg)",
-        backdropFilter: "blur(28px) saturate(1.4)", WebkitBackdropFilter: "blur(28px) saturate(1.4)",
-        border: focused ? "1px solid var(--glass-border-focused)" : "1px solid var(--glass-border)",
-        boxShadow: focused ? `0 40px 100px -30px ${accent}55, 0 12px 32px -12px rgba(20,22,30,0.18)` : "var(--glass-shadow)",
+      initial={{ opacity: 0, y: 24 }}
+      animate={{
         opacity: dimmed ? 0.42 : 1,
-        filter: dimmed ? "blur(2px)" : "none",
-        transform: focused ? "translateY(-10px) scale(1.025)" : "translateY(0) scale(1)",
-        transition: `opacity 500ms var(--motion-ui), filter 500ms var(--motion-ui), transform 500ms var(--motion-ui), box-shadow 500ms var(--motion-ui), background 500ms var(--motion-ui), border 500ms var(--motion-ui)`,
-        animation: `lotusFloatIn 700ms var(--motion-float) ${idx * 90}ms backwards`,
+        y: focused ? -10 : 0,
+        scale: focused ? 1.025 : 1,
+        filter: dimmed ? "blur(2px)" : "blur(0px)",
+        backgroundColor: focused ? "var(--glass-focused)" : "var(--glass-bg)",
+        borderColor: focused ? "var(--glass-border-focused)" : "var(--glass-border)",
+        boxShadow: focused
+          ? `0 40px 100px -30px ${accent}55, 0 12px 32px -12px rgba(20,22,30,0.18)`
+          : "var(--glass-shadow)",
+      }}
+      transition={{ type: "spring", stiffness: 300, damping: 24, delay: idx * 0.07 }}
+      style={{
+        ...baseStyle,
+        backdropFilter: "blur(28px) saturate(1.4)", WebkitBackdropFilter: "blur(28px) saturate(1.4)",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "var(--glass-shadow)",
       }}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }

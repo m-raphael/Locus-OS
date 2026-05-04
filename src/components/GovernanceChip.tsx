@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import { invoke } from "@tauri-apps/api/core";
 
 interface GovernanceSummary {
@@ -29,7 +30,10 @@ export default function GovernanceChip() {
   const aiOn = summary.allow_ai_inference;
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: -12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 22 }}
       title={`${used}/${max} intents this minute · AI inference ${aiOn ? "on" : "off"}`}
       style={{
         position: "fixed", top: 20, right: 24, zIndex: 40,
@@ -41,39 +45,42 @@ export default function GovernanceChip() {
         boxShadow: "var(--locus-shadow)",
         fontSize: 10, fontFamily: "var(--font-mono)",
         color: "var(--muted)",
-        animation: "lotusFloatIn 600ms var(--motion-float)",
-        transition: "all 300ms var(--motion-ui)",
       }}
     >
       {/* Shield icon */}
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+      <motion.svg
+        width="11" height="11" viewBox="0 0 24 24" fill="none"
         stroke={nearLimit ? "#e05c5c" : aiOn ? "#5cb87a" : "var(--muted)"}
         strokeWidth="2.2"
-        style={{ animation: nearLimit ? "lotusGovernancePulse 1.5s ease-in-out infinite" : undefined }}
+        animate={nearLimit ? { scale: [1, 1.15, 1], opacity: [1, 0.7, 1] } : {}}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
       >
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-      </svg>
+      </motion.svg>
 
       {/* Rate bar */}
       <div style={{
         width: 28, height: 3, borderRadius: 2,
         background: "var(--chip-bg)", overflow: "hidden",
       }}>
-        <div style={{
-          height: "100%", borderRadius: 2,
-          width: `${pct * 100}%`,
-          background: nearLimit ? "#e05c5c" : "#5cb87a",
-          transition: "width 400ms var(--motion-ui), background 400ms",
-        }}/>
+        <motion.div
+          animate={{ width: `${pct * 100}%`, backgroundColor: nearLimit ? "#e05c5c" : "#5cb87a" }}
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          style={{ height: "100%", borderRadius: 2 }}
+        />
       </div>
 
       {/* AI indicator */}
-      <span style={{
-        height: 5, width: 5, borderRadius: "50%", flexShrink: 0,
-        background: aiOn ? "#5cb87a" : "#e05c5c",
-        boxShadow: aiOn ? "0 0 6px #5cb87a88" : "none",
-        transition: "background 300ms",
-      }}/>
-    </div>
+      <motion.span
+        animate={{
+          backgroundColor: aiOn ? "#5cb87a" : "#e05c5c",
+          boxShadow: aiOn ? "0 0 6px #5cb87a88" : "none",
+        }}
+        transition={{ duration: 0.3 }}
+        style={{
+          height: 5, width: 5, borderRadius: "50%", flexShrink: 0,
+        }}
+      />
+    </motion.div>
   );
 }
