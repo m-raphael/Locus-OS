@@ -60,7 +60,7 @@ export function buildSuggestions(query: string): Suggestion[] {
   return out.slice(0, 6);
 }
 
-export type ModuleKind = "mail" | "calendar" | "live" | "doc" | "predictive" | "marketplace" | "simulation" | "audit" | "draft";
+export type ModuleKind = "mail" | "calendar" | "live" | "doc" | "predictive" | "marketplace" | "simulation" | "audit" | "draft" | "music" | "alarm" | "map";
 
 export function modulesForSpace(label: string): ModuleKind[] {
   const l = label.toLowerCase();

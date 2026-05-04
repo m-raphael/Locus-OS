@@ -23,6 +23,10 @@ export {
   type PredictionSource,
 } from "./PredictionBoard";
 
+export { LandingHero, type LandingHeroProps, type IntentChip } from "./LandingHero";
+export { LongPressMenu, type LongPressMenuProps, type LongPressAction } from "./LongPressMenu";
+export { PluginCard, type PluginCardProps } from "./PluginCard";
+
 export {
   fonts,
   radii,
