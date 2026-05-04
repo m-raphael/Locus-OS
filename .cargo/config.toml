@@ -5,8 +5,10 @@
 #
 # If lld is not installed, remove or comment out the linker lines.
 
-[target.aarch64-apple-darwin]
-linker = "/opt/homebrew/opt/lld/bin/ld64.lld"
-
-[target.x86_64-apple-darwin]
-linker = "/usr/local/opt/lld/bin/ld64.lld"
+# LLD disabled — brew-installed lld doesn't support macOS linker flags.
+# Using default Apple system linker instead.
+# [target.aarch64-apple-darwin]
+# linker = "/opt/homebrew/opt/lld/bin/ld64.lld"
+#
+# [target.x86_64-apple-darwin]
+# linker = "/usr/local/opt/lld/bin/ld64.lld"
