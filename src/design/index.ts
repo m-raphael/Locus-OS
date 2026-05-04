@@ -16,6 +16,12 @@ export {
   type TransitionEvent,
   type TransitionKind,
 } from "./TransitionTimeline";
+export {
+  PredictionBoard,
+  type PredictionBoardProps,
+  type PredictionItem,
+  type PredictionSource,
+} from "./PredictionBoard";
 
 export {
   fonts,
