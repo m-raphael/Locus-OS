@@ -10,6 +10,12 @@ export { LotusCanvas, type LotusCanvasProps } from "./LotusCanvas";
 export { GlassModule, type GlassModuleProps } from "./GlassModule";
 export { EntityChip, type EntityChipProps } from "./EntityChip";
 export { GraphExplorerPanel, type GraphExplorerPanelProps, type GraphNode } from "./GraphExplorerPanel";
+export {
+  TransitionTimeline,
+  type TransitionTimelineProps,
+  type TransitionEvent,
+  type TransitionKind,
+} from "./TransitionTimeline";
 
 export {
   fonts,

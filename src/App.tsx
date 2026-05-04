@@ -10,6 +10,8 @@ import LocusBar from "./components/LocusBar";
 import CollabBar, { useCollabSession } from "./components/CollabBar";
 import GovernanceChip from "./components/GovernanceChip";
 import FocusGoalBar from "./components/FocusGoalBar";
+import GraphExplorer from "./components/GraphExplorer";
+import TransitionTimeline from "./components/TransitionTimeline";
 
 export default function App() {
   const { isDark, accent, activeSpaceLabel, setBackendLabel, uiDensity } = useLocusStore();
@@ -46,6 +48,8 @@ export default function App() {
       <CollabBar session={collab} />
       <GovernanceChip />
       <FocusGoalBar />
+      <GraphExplorer />
+      <TransitionTimeline />
       <LocusBar />
     </div>
   );
