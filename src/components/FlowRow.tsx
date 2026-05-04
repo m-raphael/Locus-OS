@@ -1,5 +1,6 @@
-import { useEffect, useCallback, memo, KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useCallback, useRef, memo, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import gsap from "gsap";
 import { Flow, Module, useLocusStore } from "../store";
 
 const CARD: React.CSSProperties = {
@@ -32,7 +33,6 @@ const PLUS_BUBBLE: React.CSSProperties = {
   color: "var(--muted)",
   fontSize: 18, lineHeight: 1,
   transition: "all 400ms cubic-bezier(0.22, 0.9, 0.32, 1)",
-  animation: "lotusModuleAppear 400ms cubic-bezier(0.22, 0.9, 0.32, 1) backwards",
 };
 
 const DRAFT_VERBS = ["Draft", "Find", "Review", "Plan", "Call", "Send"];
@@ -44,7 +44,7 @@ function props(module: Module): Record<string, unknown> {
 
 const ModuleCard = memo(function ModuleCard({ module, label, body }: { module: Module; label: string; body: string }) {
   return (
-    <div key={module.id} style={CARD}>
+    <div key={module.id} data-module-card style={CARD}>
       <p style={LABEL}>{label}</p>
       <p style={CONTENT}>{body}</p>
     </div>
@@ -56,7 +56,7 @@ const DraftModule = memo(function DraftModule({ module }: { module: Module }) {
   const verb = String(p.verb ?? "Draft");
   const noun = String(p.noun ?? "New");
   return (
-    <div key={module.id} style={{ ...CARD, border: "1px dashed rgba(128,128,128,0.2)" }}>
+    <div key={module.id} data-module-card style={{ ...CARD, border: "1px dashed rgba(128,128,128,0.2)" }}>
       <p style={LABEL}>Draft</p>
       <p style={{ ...CONTENT, fontSize: 15, fontWeight: 500 }}>
         <span style={{ color: "var(--accent)" }}>{verb}</span>
@@ -122,15 +122,36 @@ const EMPTY: React.CSSProperties = {
 
 interface Props { flow: Flow; }
 
-export default function FlowRow({ flow }: Props) {
+const FlowRow = memo(function FlowRow({ flow }: Props) {
   const { modules, setModules, prependModule, accent } = useLocusStore();
   const flowModules = modules[flow.id] ?? [];
+  const rowRef = useRef<HTMLDivElement>(null);
+  const plusRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     invoke<Module[]>("list_modules", { flowId: flow.id }).then((mods) =>
       setModules(flow.id, mods)
     );
   }, [flow.id, setModules]);
+
+  // GSAP stagger entrance for module cards
+  useEffect(() => {
+    if (!rowRef.current || flowModules.length === 0) return;
+    const cards = rowRef.current.querySelectorAll<HTMLElement>("[data-module-card]");
+    gsap.fromTo(cards,
+      { opacity: 0, y: 24, scale: 0.96 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.45, stagger: 0.08, ease: "power2.out" }
+    );
+  }, [flowModules.length]);
+
+  // GSAP elastic entrance for plus bubble
+  useEffect(() => {
+    if (!plusRef.current) return;
+    gsap.fromTo(plusRef.current,
+      { opacity: 0, scale: 0.3 },
+      { opacity: 1, scale: 1, duration: 0.7, ease: "elastic.out(1, 0.5)", delay: 0.3 }
+    );
+  }, []);
 
   const createModule = useCallback(async () => {
     const verb = DRAFT_VERBS[Math.floor(Math.random() * DRAFT_VERBS.length)];
@@ -155,7 +176,7 @@ export default function FlowRow({ flow }: Props) {
   }, [createModule]);
 
   return (
-    <div style={ROW} onKeyDown={onKeyDown}>
+    <div ref={rowRef} style={ROW} onKeyDown={onKeyDown}>
       {flowModules.length === 0 ? (
         <span style={EMPTY}>No modules yet</span>
       ) : (
@@ -165,6 +186,7 @@ export default function FlowRow({ flow }: Props) {
         })
       )}
       <div
+        ref={plusRef}
         role="button"
         tabIndex={0}
         aria-label="Add module"
@@ -185,4 +207,6 @@ export default function FlowRow({ flow }: Props) {
       >+</div>
     </div>
   );
-}
+});
+
+export default FlowRow;

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, KeyboardEvent, useCallback } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { invoke } from "@tauri-apps/api/core";
 import { useLocusStore, buildSuggestions, Suggestion, SpaceSummary } from "../store";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
@@ -24,6 +25,34 @@ function compoundTaskCount(q: string): number {
   for (const sep of COMPOUND_SEPS) parts = parts.flatMap((p) => p.split(sep)).filter(Boolean);
   return Math.max(parts.length, 1);
 }
+
+const dropdownVariants = {
+  hidden: { opacity: 0, scaleY: 0.92, originY: 1 },
+  show: {
+    opacity: 1, scaleY: 1, originY: 1,
+    transition: { duration: 0.22, ease: [0.22, 0.9, 0.32, 1] as const },
+  },
+  exit: {
+    opacity: 0, scaleY: 0.92, originY: 1,
+    transition: { duration: 0.16 },
+  },
+};
+
+const hintVariants = {
+  hidden: { opacity: 0, y: 8 },
+  show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 400, damping: 25 } },
+  exit: { opacity: 0, y: 8, transition: { duration: 0.14 } },
+};
+
+const orchContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
+};
+
+const orchItem = {
+  hidden: { opacity: 0, x: -12 },
+  show: { opacity: 1, x: 0, transition: { type: "spring" as const, stiffness: 400, damping: 25 } },
+};
 
 export default function LocusBar() {
   const [query, setQuery] = useState("");
@@ -188,14 +217,19 @@ export default function LocusBar() {
       width: "min(680px, 92%)", zIndex: 30,
     }}>
       {/* Autocomplete dropdown */}
-      {active && suggestions.length > 0 && (
-        <div style={{
-          marginBottom: 12, borderRadius: 24, overflow: "hidden",
-          background: "var(--dropdown-bg)",
-          backdropFilter: "blur(28px) saturate(1.4)", WebkitBackdropFilter: "blur(28px) saturate(1.4)",
-          boxShadow: `0 0 0 1px var(--glass-border), 0 30px 80px -20px ${accent}55, 0 12px 40px -10px rgba(0,0,0,0.15)`,
-          animation: "lotusFloatIn 280ms var(--motion-float)",
-        }}>
+      <AnimatePresence>
+        {active && suggestions.length > 0 && (
+          <motion.div
+            variants={dropdownVariants}
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            style={{
+              marginBottom: 12, borderRadius: 24, overflow: "hidden",
+              background: "var(--dropdown-bg)",
+              backdropFilter: "blur(28px) saturate(1.4)", WebkitBackdropFilter: "blur(28px) saturate(1.4)",
+              boxShadow: `0 0 0 1px var(--glass-border), 0 30px 80px -20px ${accent}55, 0 12px 40px -10px rgba(0,0,0,0.15)`,
+            }}>
           <div style={{ padding: "16px 20px 8px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>Intents</div>
           {suggestions.map((s, i) => (
             <div key={i}
@@ -255,21 +289,27 @@ export default function LocusBar() {
             <span>⌘K · ⌘/ · ↑↓ navigate · ↵ execute · esc close</span>
             <span>LOTUS · intent v0.1</span>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Compound-intent orchestrator hint */}
-      {isCompound && !orchestrating && (
-        <div style={{
-          marginBottom: 8,
-          padding: "9px 18px",
-          borderRadius: 16,
-          background: "var(--dropdown-bg)",
-          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-          boxShadow: `0 0 0 1px var(--glass-border), 0 12px 40px -10px ${accent}33`,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          animation: "lotusFloatIn 220ms var(--motion-float)",
-        }}>
+      <AnimatePresence>
+        {isCompound && !orchestrating && (
+          <motion.div
+            variants={hintVariants}
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            style={{
+              marginBottom: 8,
+              padding: "9px 18px",
+              borderRadius: 16,
+              background: "var(--dropdown-bg)",
+              backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+              boxShadow: `0 0 0 1px var(--glass-border), 0 12px 40px -10px ${accent}33`,
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.2">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -282,12 +322,19 @@ export default function LocusBar() {
             onMouseDown={(e) => { e.preventDefault(); runOrchestrate(query.trim()); }}
             style={{ fontSize: 11, color: accent, fontFamily: "var(--font-mono)", cursor: "pointer", padding: "2px 8px", borderRadius: 999, background: `${accent}18`, border: `1px solid ${accent}33` }}
           >↵ run</span>
-        </div>
-      )}
+          </motion.div>
+        )}
+        </AnimatePresence>
 
       {/* Orchestrator task results */}
-      {orchTasks.length > 0 && (
-        <div style={{
+      <AnimatePresence>
+        {orchTasks.length > 0 && (
+          <motion.div
+            variants={orchContainer}
+            initial="hidden"
+            animate="show"
+            exit={{ opacity: 0, y: -8 }}
+            style={{
           marginBottom: 8, borderRadius: 18, overflow: "hidden",
           background: "var(--dropdown-bg)",
           backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
@@ -296,10 +343,9 @@ export default function LocusBar() {
           <div style={{ padding: "12px 18px 6px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.16em", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
             Orchestrator · {orchTasks.length} tasks
           </div>
-          {orchTasks.map((t, i) => (
-            <div key={t.id} style={{
+          {orchTasks.map((t) => (
+            <motion.div key={t.id} variants={orchItem} style={{
               padding: "8px 18px", display: "flex", alignItems: "center", gap: 10,
-              animation: `lotusTaskSplit 300ms var(--motion-float) ${i * 60}ms backwards`,
             }}>
               <span style={{
                 width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
@@ -310,21 +356,27 @@ export default function LocusBar() {
               <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: t.error ? "#e05c5c" : "var(--muted)", flexShrink: 0 }}>
                 {t.error ? "err" : t.result ? "✓" : "…"}
               </span>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Locus pill */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12, padding: "16px 24px",
-        borderRadius: "var(--locus-radius)",
-        background: "var(--locus-bg)",
-        backdropFilter: "blur(28px) saturate(1.4)", WebkitBackdropFilter: "blur(28px) saturate(1.4)",
-        boxShadow: active ? "var(--locus-shadow-active)" : "var(--locus-shadow)",
-        transform: active ? "translateY(-2px)" : "translateY(0)",
-        transition: `box-shadow 500ms var(--motion-ui), transform 500ms var(--motion-ui)`,
-      }}>
+      <motion.div
+        animate={{
+          y: active ? -2 : 0,
+          scale: active ? 1.01 : 1,
+          boxShadow: active ? "var(--locus-shadow-active)" : "var(--locus-shadow)",
+        }}
+        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+        style={{
+          display: "flex", alignItems: "center", gap: 12, padding: "16px 24px",
+          borderRadius: "var(--locus-radius)",
+          background: "var(--locus-bg)",
+          backdropFilter: "blur(28px) saturate(1.4)", WebkitBackdropFilter: "blur(28px) saturate(1.4)",
+          boxShadow: "var(--locus-shadow)",
+        }}>
         {/* Space indicator */}
         <div style={{ display: "flex", height: 28, alignItems: "center", gap: 6, flexShrink: 0 }}>
           <span style={{ height: 6, width: 6, borderRadius: "50%", background: accent, boxShadow: `0 0 10px ${accent}` }}/>
@@ -393,7 +445,7 @@ export default function LocusBar() {
           background: "var(--chip-bg)", color: "var(--muted)",
           fontFamily: "var(--font-mono)", flexShrink: 0,
         }}>⌘ K</kbd>
-      </div>
+      </motion.div>
     </div>
   );
 }

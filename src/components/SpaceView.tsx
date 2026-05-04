@@ -1,4 +1,5 @@
 import { useEffect, useState, memo } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { invoke } from "@tauri-apps/api/core";
 import { useLocusStore, Flow, modulesForSpace } from "../store";
 import FlowRow from "./FlowRow";
@@ -54,9 +55,14 @@ const SpaceView = memo(function SpaceView({ collab }: SpaceViewProps) {
       <div style={{ padding: "0 48px 32px", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
         <div>
           <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.18em", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>Space · flow</div>
-          <h1 style={{ marginTop: 8, fontSize: 64, lineHeight: 0.95, fontWeight: 600, letterSpacing: "-0.035em", color: "var(--text)", animation: "lotusFloatIn 500ms var(--motion-float)" }}>
+          <motion.h1
+            initial={{ opacity: 0, y: 36 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 22 }}
+            style={{ marginTop: 8, fontSize: 64, lineHeight: 0.95, fontWeight: 600, letterSpacing: "-0.035em", color: "var(--text)" }}
+          >
             {activeSpaceLabel}.
-          </h1>
+          </motion.h1>
           <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
             <span>{kinds.length} modules</span>
             <span>·</span>
@@ -141,21 +147,26 @@ const SpaceView = memo(function SpaceView({ collab }: SpaceViewProps) {
             return <Mod key={i} {...sharedProps} />;
           })}
           {/* Draft modules created via + bubble */}
-          {draftModules.map((d) => {
-            return (
-              <div
-                key={d.id}
-                style={{
-                  width: "var(--density-module-width)", minHeight: "var(--density-module-minh)",
-                  borderRadius: "var(--module-radius)", flexShrink: 0,
-                  background: "var(--glass-bg)",
-                  backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-                  border: "1.5px dashed rgba(128,128,128,0.25)",
-                  padding: "24px 28px",
-                  display: "flex", flexDirection: "column",
-                  animation: "lotusFloatIn 700ms var(--motion-float)",
-                }}
-              >
+          <AnimatePresence>
+            {draftModules.map((d) => {
+              return (
+                <motion.div
+                  key={d.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.92, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, x: -20 }}
+                  transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                  style={{
+                    width: "var(--density-module-width)", minHeight: "var(--density-module-minh)",
+                    borderRadius: "var(--module-radius)", flexShrink: 0,
+                    background: "var(--glass-bg)",
+                    backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                    border: "1.5px dashed rgba(128,128,128,0.25)",
+                    padding: "24px 28px",
+                    display: "flex", flexDirection: "column",
+                  }}
+                >
                 <p style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.28)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 6, fontFamily: "var(--font-mono)" }}>
                   Draft
                 </p>
@@ -166,13 +177,17 @@ const SpaceView = memo(function SpaceView({ collab }: SpaceViewProps) {
                 <p style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", marginTop: "auto", fontFamily: "var(--font-mono)" }}>
                   Click Locus bar to set intent
                 </p>
-              </div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
           {/* Plus bubble — create a new draft module */}
-          <div
-            role="button"
-            tabIndex={0}
+          <motion.button
+            initial={{ opacity: 0, scale: 0.3 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17, delay: 0.2 }}
+            whileHover={{ scale: 1.1, backgroundColor: `${accent}18`, borderColor: `${accent}66` }}
+            whileTap={{ scale: 0.9 }}
             aria-label="Add module"
             style={{
               flexShrink: 0, alignSelf: "center",
@@ -184,8 +199,6 @@ const SpaceView = memo(function SpaceView({ collab }: SpaceViewProps) {
               cursor: "pointer",
               color: accent,
               fontSize: 20, lineHeight: 1,
-              transition: "all 400ms cubic-bezier(0.22, 0.9, 0.32, 1)",
-              animation: "lotusModuleAppear 400ms cubic-bezier(0.22, 0.9, 0.32, 1) backwards",
             }}
             onClick={() => {
               const verb = ["Draft", "Find", "Review", "Plan", "Call", "Send"][Math.floor(Math.random() * 6)];
@@ -199,18 +212,8 @@ const SpaceView = memo(function SpaceView({ collab }: SpaceViewProps) {
                   .catch(() => {});
               }
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = `${accent}18`;
-              e.currentTarget.style.borderColor = `${accent}66`;
-              e.currentTarget.style.transform = "scale(1.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "var(--dropdown-bg)";
-              e.currentTarget.style.borderColor = `${accent}44`;
-              e.currentTarget.style.transform = "scale(1)";
-            }}
             title="Add module (Tab)"
-          >+</div>
+          >+</motion.button>
         </div>
       </div>
     </div>

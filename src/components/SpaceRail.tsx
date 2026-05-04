@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { invoke } from "@tauri-apps/api/core";
 import { useLocusStore } from "../store";
 
@@ -26,16 +27,22 @@ export default function SpaceRail() {
       <div style={{ padding: "8px 12px 4px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.16em", color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
         Spaces
       </div>
-      {spaces.map((s) => {
-        const active = s.id === activeSpaceId;
-        const hovered = hoveredId === s.id;
-        return (
-          <div
-            key={s.id}
-            onClick={() => setActiveSpace(s.id, s.description)}
-            onMouseEnter={() => setHoveredId(s.id)}
-            onMouseLeave={() => setHoveredId(null)}
-            style={{
+      <AnimatePresence>
+        {spaces.map((s) => {
+          const active = s.id === activeSpaceId;
+          const hovered = hoveredId === s.id;
+          return (
+            <motion.div
+              key={s.id}
+              layout
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20, height: 0, marginBottom: 0 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              onClick={() => setActiveSpace(s.id, s.description)}
+              onMouseEnter={() => setHoveredId(s.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              style={{
               display: "flex", alignItems: "center", gap: 10,
               padding: "8px 12px",
               borderRadius: 14,
@@ -45,13 +52,15 @@ export default function SpaceRail() {
               transition: `all 300ms var(--motion-ui)`,
             }}
           >
-            <span style={{
-              height: 6, width: 6, borderRadius: "50%", flexShrink: 0,
-              background: active ? accent : s.is_ephemeral ? "rgba(128,128,128,0.15)" : "rgba(128,128,128,0.3)",
-              boxShadow: active ? `0 0 8px ${accent}` : "none",
-              border: s.is_ephemeral ? "1.5px dashed rgba(128,128,128,0.4)" : "none",
-              transition: `all 300ms var(--motion-ui)`,
-            }}/>
+            <motion.span
+              layoutId={active ? `active-dot-${activeSpaceId}` : undefined}
+              style={{
+                height: 6, width: 6, borderRadius: "50%", flexShrink: 0,
+                background: active ? accent : s.is_ephemeral ? "rgba(128,128,128,0.15)" : "rgba(128,128,128,0.3)",
+                boxShadow: active ? `0 0 8px ${accent}` : "none",
+                border: s.is_ephemeral ? "1.5px dashed rgba(128,128,128,0.4)" : "none",
+              }}
+            />
             <span style={{ fontSize: 12, letterSpacing: "-0.005em", minWidth: 120, opacity: s.is_ephemeral ? 0.7 : 1 }}>
               {s.description}
             </span>
@@ -66,9 +75,10 @@ export default function SpaceRail() {
                 transition: "opacity 150ms",
               }}
             >×</button>
-          </div>
+          </motion.div>
         );
       })}
+      </AnimatePresence>
       <div style={{ marginTop: 8, padding: "4px 12px", fontSize: 10, color: "var(--muted)", fontFamily: "var(--font-mono)" }}>
         ⌘ + space — new flow
       </div>
