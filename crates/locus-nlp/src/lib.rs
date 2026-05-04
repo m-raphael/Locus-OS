@@ -17,12 +17,15 @@ pub mod ner;
 pub mod nim;
 pub mod pipeline;
 pub mod pos;
+pub mod split_compound;
+pub mod time_phrase;
 
 pub use local::LocalPipeline;
 pub use nim::NimPipeline;
 pub use pipeline::{
     CorefChain, Entity, EntityLabel, Keyword, NlpDoc, NlpError, NlpPipeline, PosTag, Result, Token,
 };
+pub use split_compound::{split_compound, CompoundSplit};
 
 use std::sync::Arc;
 

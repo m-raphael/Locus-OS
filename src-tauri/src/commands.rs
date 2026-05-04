@@ -325,6 +325,17 @@ pub async fn create_module(
     db.0.add_module(&flow_id, &component_type, &props_json).await.map_err(|e| e.to_string())
 }
 
+// ── Compound-intent splitting (NLP B.1) ──────────────────────────────────
+
+#[tauri::command]
+pub async fn split_compound_intent(
+    nlp: State<'_, AppNlp>,
+    input: String,
+) -> Result<locus_nlp::CompoundSplit, String> {
+    let doc = nlp.0.analyze(&input).await.map_err(|e| e.to_string())?;
+    Ok(locus_nlp::split_compound(&doc))
+}
+
 // ── Governance (N15 / G5) ─────────────────────────────────────────────────
 
 #[tauri::command]

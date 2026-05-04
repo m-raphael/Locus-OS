@@ -19,12 +19,7 @@ interface OrchestratorResult {
   summary: string;
 }
 
-const COMPOUND_SEPS = [" and ", " then ", " also ", "; ", " + "];
-function compoundTaskCount(q: string): number {
-  let parts = [q.toLowerCase()];
-  for (const sep of COMPOUND_SEPS) parts = parts.flatMap((p) => p.split(sep)).filter(Boolean);
-  return Math.max(parts.length, 1);
-}
+interface CompoundSplit { is_compound: boolean; count: number; parts: string[]; }
 
 const dropdownVariants = {
   hidden: { opacity: 0, scaleY: 0.92, originY: 1 },
@@ -61,6 +56,7 @@ export default function LocusBar() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [orchestrating, setOrchestrating] = useState(false);
   const [orchTasks, setOrchTasks] = useState<OrchestratorResult["tasks"]>([]);
+  const [compoundSplit, setCompoundSplit] = useState<CompoundSplit | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { activeSpaceLabel, activeSpaceId, accent, setSpaces, setActiveSpace, setBarFocused, updateSpaceMode, setSuggestedNext, setLegacyAppContext } = useLocusStore();
 
@@ -79,6 +75,18 @@ export default function LocusBar() {
     };
     load();
   }, [query, active]);
+
+  // NLP-based compound-intent detection (debounced)
+  useEffect(() => {
+    if (!query.trim()) { setCompoundSplit(null); return; }
+    const t = setTimeout(async () => {
+      try {
+        const split = await invoke<CompoundSplit>("split_compound_intent", { input: query });
+        setCompoundSplit(split);
+      } catch { setCompoundSplit(null); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
 
   // Voice: final speech result → submit as raw text intent
   const runText = useCallback(async (text: string) => {
@@ -196,8 +204,8 @@ export default function LocusBar() {
     }
   };
 
-  const taskCount = compoundTaskCount(query);
-  const isCompound = query.trim().length > 0 && taskCount > 1;
+  const taskCount = compoundSplit?.count ?? 1;
+  const isCompound = query.trim().length > 0 && (compoundSplit?.is_compound ?? false);
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") { e.preventDefault(); setSel(Math.min(sel + 1, suggestions.length - 1)); }
