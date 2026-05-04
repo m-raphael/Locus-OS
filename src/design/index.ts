@@ -34,6 +34,13 @@ export {
 } from "./SimulationBoard";
 export { LongPressMenu, type LongPressMenuProps, type LongPressAction } from "./LongPressMenu";
 export { PluginCard, type PluginCardProps } from "./PluginCard";
+export {
+  MarketplaceBoard,
+  type MarketplaceBoardProps,
+  type Plugin,
+  type MarketplaceFilter,
+  type PermissionRisk,
+} from "./MarketplaceBoard";
 
 export {
   fonts,

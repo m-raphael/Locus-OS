@@ -1,0 +1,388 @@
+/*
+ * MarketplaceBoard styles.
+ */
+
+.lotus-mkt {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--lotus-font-display);
+  min-height: 0;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+.lotus-mkt__header {
+  padding: 4px 4px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lotus-mkt__title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.lotus-mkt__title {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--lotus-text);
+  letter-spacing: -0.02em;
+}
+
+.lotus-mkt__count {
+  font-size: 10px;
+  font-family: var(--lotus-font-mono);
+  color: var(--lotus-accent);
+  background: color-mix(in oklab, var(--lotus-accent) 12%, transparent);
+  border-radius: 999px;
+  padding: 2px 8px;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--lotus-accent) 30%, transparent);
+  letter-spacing: 0.04em;
+}
+
+/* ── Search ──────────────────────────────────────────────────────────────── */
+.lotus-mkt__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--lotus-radius-control);
+  background: color-mix(in oklab, var(--lotus-text-muted) 6%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lotus-border-soft);
+  transition: box-shadow 240ms, background 240ms;
+}
+.lotus-mkt__search:focus-within {
+  background: color-mix(in oklab, var(--lotus-accent) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--lotus-accent) 35%, transparent),
+              0 0 0 4px color-mix(in oklab, var(--lotus-accent) 12%, transparent);
+}
+
+.lotus-mkt__search-icon {
+  flex-shrink: 0;
+  color: var(--lotus-text-muted);
+}
+
+.lotus-mkt__search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--lotus-text);
+  font-family: var(--lotus-font-display);
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+.lotus-mkt__search-input::placeholder { color: var(--lotus-text-faint); }
+
+.lotus-mkt__search-clear {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--lotus-text-muted);
+  font-size: 16px;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+/* ── Filter chips ────────────────────────────────────────────────────────── */
+.lotus-mkt__filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.lotus-mkt__filter {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px 11px;
+  border-radius: var(--lotus-radius-pill);
+  font-family: var(--lotus-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: color-mix(in oklab, var(--lotus-text-muted) 6%, transparent);
+  color: var(--lotus-text-muted);
+  box-shadow: inset 0 0 0 1px var(--lotus-border-soft);
+  transition: background 200ms, color 200ms, box-shadow 200ms;
+}
+.lotus-mkt__filter:hover { background: color-mix(in oklab, var(--lotus-text-muted) 10%, transparent); }
+.lotus-mkt__filter--active {
+  background: color-mix(in oklab, var(--lotus-accent) 14%, transparent);
+  color: var(--lotus-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--lotus-accent) 35%, transparent);
+}
+
+.lotus-mkt__filter-count {
+  font-size: 9px;
+  margin-left: 4px;
+  opacity: 0.65;
+}
+
+/* ── List ────────────────────────────────────────────────────────────────── */
+.lotus-mkt__list {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0 -8px;
+  padding: 0 8px;
+  min-height: 0;
+}
+
+.lotus-mkt__row {
+  padding: 14px 8px;
+  border-bottom: 1px solid var(--lotus-border-soft);
+  cursor: pointer;
+  transition: background 220ms;
+  border-radius: var(--lotus-radius-control);
+}
+.lotus-mkt__row:hover {
+  background: color-mix(in oklab, var(--lotus-text-muted) 5%, transparent);
+}
+.lotus-mkt__row:last-child { border-bottom: none; }
+
+.lotus-mkt__row-top {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.lotus-mkt__row-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in oklab, var(--lotus-text-muted) 8%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lotus-border-soft);
+  color: var(--lotus-text-muted);
+  flex-shrink: 0;
+  transition: background 240ms, color 240ms, box-shadow 240ms;
+}
+.lotus-mkt__row-icon--installed {
+  background: color-mix(in oklab, var(--lotus-accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--lotus-accent) 35%, transparent);
+  color: var(--lotus-accent);
+}
+
+.lotus-mkt__row-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.lotus-mkt__row-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lotus-text);
+  letter-spacing: -0.01em;
+}
+.lotus-mkt__row-version {
+  font-size: 10px;
+  color: var(--lotus-text-faint);
+  font-family: var(--lotus-font-mono);
+}
+.lotus-mkt__row-installed-badge {
+  font-size: 9px;
+  font-family: var(--lotus-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--lotus-entity-organization) 16%, transparent);
+  color: var(--lotus-entity-organization);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--lotus-entity-organization) 35%, transparent);
+}
+
+.lotus-mkt__row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--lotus-text-muted);
+  font-family: var(--lotus-font-mono);
+}
+.lotus-mkt__row-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.lotus-mkt__row-desc {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--lotus-text-muted);
+  line-height: 1.45;
+  font-family: var(--lotus-font-display);
+}
+
+.lotus-mkt__perms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+.lotus-mkt__perm {
+  --c: var(--lotus-text-muted);
+  font-size: 9px;
+  font-family: var(--lotus-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--c) 14%, transparent);
+  color: var(--c);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 30%, transparent);
+}
+.lotus-mkt__perm--high { --c: oklch(64% 0.18 25); }
+.lotus-mkt__perm--med  { --c: oklch(72% 0.14 60); }
+.lotus-mkt__perm--low  { --c: oklch(70% 0.14 150); }
+
+/* Action buttons */
+.lotus-mkt__row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.lotus-mkt__btn {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 13px;
+  border-radius: var(--lotus-radius-pill);
+  font-family: var(--lotus-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  background: color-mix(in oklab, var(--lotus-accent) 14%, transparent);
+  color: var(--lotus-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--lotus-accent) 35%, transparent);
+  transition: background 200ms, transform 120ms;
+  white-space: nowrap;
+}
+.lotus-mkt__btn:hover { background: color-mix(in oklab, var(--lotus-accent) 22%, transparent); }
+.lotus-mkt__btn:active { transform: scale(0.97); }
+.lotus-mkt__btn--ghost {
+  background: transparent;
+  color: var(--lotus-text-muted);
+  box-shadow: inset 0 0 0 1px var(--lotus-border-soft);
+  font-size: 10px;
+  padding: 3px 9px;
+}
+.lotus-mkt__btn--ghost:hover {
+  background: color-mix(in oklab, var(--lotus-text-muted) 10%, transparent);
+  color: var(--lotus-text);
+}
+
+/* Detail expansion */
+.lotus-mkt__detail {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: var(--lotus-radius-control);
+  background: color-mix(in oklab, var(--lotus-text-muted) 6%, transparent);
+  box-shadow: inset 0 0 0 1px var(--lotus-border-soft);
+}
+.lotus-mkt__detail-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--lotus-text-faint);
+  font-family: var(--lotus-font-mono);
+  margin-bottom: 8px;
+}
+.lotus-mkt__perm-detail {
+  display: grid;
+  grid-template-columns: 8px 1fr auto;
+  gap: 8px;
+  align-items: start;
+  margin-bottom: 8px;
+}
+.lotus-mkt__perm-detail:last-of-type { margin-bottom: 12px; }
+.lotus-mkt__perm-dot {
+  --c: var(--lotus-text-muted);
+  width: 6px; height: 6px; border-radius: 999px;
+  background: var(--c);
+  margin-top: 6px;
+}
+.lotus-mkt__perm-dot--high { --c: oklch(64% 0.18 25); }
+.lotus-mkt__perm-dot--med  { --c: oklch(72% 0.14 60); }
+.lotus-mkt__perm-dot--low  { --c: oklch(70% 0.14 150); }
+.lotus-mkt__perm-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lotus-text);
+}
+.lotus-mkt__perm-desc {
+  font-size: 11px;
+  color: var(--lotus-text-muted);
+}
+
+.lotus-mkt__risk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid var(--lotus-border-soft);
+  margin-top: 4px;
+}
+.lotus-mkt__risk-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--lotus-text-muted);
+  font-family: var(--lotus-font-mono);
+}
+.lotus-mkt__risk-meter {
+  display: flex;
+  gap: 3px;
+}
+.lotus-mkt__risk-pip {
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--lotus-text-muted) 18%, transparent);
+}
+.lotus-mkt__risk-pip--low  { background: oklch(70% 0.14 150); }
+.lotus-mkt__risk-pip--med  { background: oklch(72% 0.14 60); }
+.lotus-mkt__risk-pip--high { background: oklch(64% 0.18 25); }
+
+/* Empty state */
+.lotus-mkt__empty {
+  text-align: center;
+  padding: 36px 16px;
+  color: var(--lotus-text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Footer */
+.lotus-mkt__footer {
+  padding: 10px 4px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: var(--lotus-text-faint);
+  font-family: var(--lotus-font-mono);
+  letter-spacing: 0.06em;
+  border-top: 1px solid var(--lotus-border-soft);
+  margin-top: 6px;
+}
+
+/* Just-installed pulse */
+@keyframes lotusInstall {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-2px); }
+  40%  { transform: translateX(2px); }
+  60%  { transform: translateX(-1px); }
+  100% { transform: translateX(0); }
+}
+.lotus-mkt__row--just-installed { animation: lotusInstall 480ms cubic-bezier(0.22, 0.9, 0.32, 1); }
