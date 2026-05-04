@@ -1,0 +1,371 @@
+/*
+ * SpaceflowView · detail page with sidebar + stacked card
+ *
+ * Full-height page layout with left flow sidebar, centered glass card
+ * stack, and a floating + button. Uses lotusStackIn, lotusRowIn, and
+ * lotusFadeIn keyframes from keyframes.css.
+ */
+
+.lotus-spaceflow {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-family: var(--lotus-font-display);
+  background: linear-gradient(180deg, var(--lotus-bg-base) 0%, var(--lotus-bg-mid) 60%, var(--lotus-bg-deep) 100%);
+}
+
+/* Big dimmed title behind everything */
+.lotus-spaceflow__bg-title {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  top: 56px;
+  left: 70px;
+}
+
+.lotus-spaceflow__bg-title h1 {
+  margin: 0;
+  font-size: 88px;
+  line-height: 0.95;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  color: var(--lotus-text-faint);
+  opacity: 0.13;
+}
+
+/* Top chrome */
+.lotus-spaceflow__chrome {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: 0;
+  padding: 28px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lotus-spaceflow__back {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--lotus-text-muted);
+  padding: 0;
+}
+
+.lotus-spaceflow__time {
+  font-size: 12px;
+  color: var(--lotus-text-muted);
+  font-family: var(--lotus-font-mono);
+}
+
+/* Left sidebar */
+.lotus-spaceflow__sidebar {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  padding-top: 130px;
+  padding-left: 32px;
+  padding-right: 8px;
+}
+
+.lotus-spaceflow__new-flow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--lotus-text-muted);
+  font-family: var(--lotus-font-display);
+}
+
+.lotus-spaceflow__flow-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 2px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--lotus-font-display);
+  transition: background 200ms ease-out;
+  color: var(--lotus-text-muted);
+  font-weight: 400;
+}
+
+.lotus-spaceflow__flow-item--active {
+  background: var(--lotus-accent-soft);
+  color: var(--lotus-text);
+  font-weight: 500;
+}
+
+.lotus-spaceflow__flow-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.lotus-spaceflow__flow-label {
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lotus-spaceflow__flow-sub {
+  color: var(--lotus-text-muted);
+  font-weight: 400;
+}
+
+/* Center card */
+.lotus-spaceflow__card {
+  position: absolute;
+  z-index: 20;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 110px;
+}
+
+.lotus-spaceflow__card-inner {
+  padding: 20px;
+  border-radius: 28px;
+  background: var(--lotus-surface-focused);
+  backdrop-filter: blur(28px) saturate(1.4);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4);
+  box-shadow: var(--lotus-shadow-glass-focused);
+}
+
+/* Prompt bar */
+.lotus-spaceflow__prompt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: var(--lotus-accent-soft);
+}
+
+.lotus-spaceflow__prompt-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.lotus-spaceflow__prompt-text {
+  flex: 1;
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  color: var(--lotus-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lotus-spaceflow__prompt-mic {
+  font-size: 12px;
+  color: var(--lotus-text-muted);
+}
+
+/* Apartment rows */
+.lotus-spaceflow__apartments {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 6px;
+  position: relative;
+}
+
+.lotus-spaceflow__ap-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--lotus-surface-base);
+  transition: all 300ms ease-out;
+  position: relative;
+}
+
+.lotus-spaceflow__ap-row--popped {
+  background: var(--lotus-surface-focused);
+  box-shadow: var(--lotus-shadow-glass);
+  transform: translateX(56px) scale(1.04);
+  z-index: 5;
+}
+
+.lotus-spaceflow__ap-avatar {
+  position: absolute;
+  top: -12px;
+  left: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: #fff;
+  background: oklch(70% 0.1 30);
+  box-shadow: 0 0 0 3px var(--lotus-bg-base);
+}
+
+.lotus-spaceflow__ap-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lotus-spaceflow__ap-rooms {
+  font-size: 11px;
+  color: var(--lotus-text-muted);
+  font-family: var(--lotus-font-mono);
+}
+
+.lotus-spaceflow__ap-name {
+  margin-top: 4px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--lotus-text);
+}
+
+.lotus-spaceflow__ap-price {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--lotus-text-muted);
+}
+
+.lotus-spaceflow__ap-img {
+  width: 130px;
+  height: 76px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+/* Email content */
+.lotus-spaceflow__email {
+  padding: 0 8px;
+}
+
+.lotus-spaceflow__email-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.lotus-spaceflow__email-from {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--lotus-text);
+}
+
+.lotus-spaceflow__email-time {
+  font-size: 11px;
+  color: var(--lotus-text-muted);
+  font-family: var(--lotus-font-mono);
+}
+
+.lotus-spaceflow__email-subject {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--lotus-text);
+}
+
+.lotus-spaceflow__email-body {
+  margin-top: 20px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--lotus-text);
+  white-space: pre-wrap;
+}
+
+/* Action chips */
+.lotus-spaceflow__actions {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lotus-spaceflow__chip {
+  padding: 8px 16px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: var(--lotus-accent-soft);
+  color: var(--lotus-text);
+  font-family: var(--lotus-font-display);
+  transition: background 200ms ease-out;
+}
+
+.lotus-spaceflow__chip:hover {
+  background: var(--lotus-accent);
+  color: var(--lotus-text-on-accent);
+}
+
+.lotus-spaceflow__more {
+  margin-top: 12px;
+  padding: 6px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--lotus-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* + add module button */
+.lotus-spaceflow__add-btn {
+  position: absolute;
+  z-index: 20;
+  top: 124px;
+  right: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: var(--lotus-surface-focused);
+  color: var(--lotus-text);
+  box-shadow: var(--lotus-shadow-glass);
+  transition: transform 200ms ease-out;
+}
+
+.lotus-spaceflow__add-btn:hover {
+  transform: scale(1.1);
+}
