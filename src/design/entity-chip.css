@@ -1,0 +1,41 @@
+/*
+ * EntityChip styles.
+ *
+ * Each chip has a single CSS variable `--c` that drives the dot fill,
+ * background tint, and inset hairline. Text colour stays theme-driven
+ * so the chip is legible against both Vellum and Moonlight surfaces.
+ */
+
+.lotus-entity-chip {
+  --c: var(--lotus-entity-person);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--lotus-radius-pill);
+  font-family: var(--lotus-font-display);
+  font-size: 11px;
+  line-height: 1.2;
+  background: color-mix(in oklab, var(--c) 15%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c) 35%, transparent);
+  color: var(--lotus-text);
+  white-space: nowrap;
+}
+
+.lotus-entity-chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c);
+  flex: none;
+}
+
+.lotus-entity-chip__kind {
+  font-family: var(--lotus-font-mono);
+  color: var(--lotus-text-muted);
+}
+
+.lotus-entity-chip__label {
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}

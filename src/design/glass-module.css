@@ -1,0 +1,69 @@
+/*
+ * GlassModule styles.
+ *
+ * Backlit glass card used for every floating module surface in the
+ * LOTUS-OS design (Mail / Calendar / Live / Doc / Predictive / Music
+ * / Alarm / Map / Backend Console widgets). Drives focused / dimmed
+ * state via simple modifier classes; cascade timing is controlled
+ * inline by the component (`animation-delay`).
+ */
+
+.lotus-glass {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--lotus-radius-card);
+  background: var(--lotus-surface-base);
+  backdrop-filter: blur(var(--lotus-surface-blur, 28px)) saturate(var(--lotus-surface-saturate, 1.4));
+  -webkit-backdrop-filter: blur(var(--lotus-surface-blur, 28px)) saturate(var(--lotus-surface-saturate, 1.4));
+  box-shadow: var(--lotus-shadow-glass);
+  color: var(--lotus-text);
+  animation: lotusFloatIn var(--lotus-motion-slow) var(--lotus-motion-ease) backwards;
+  transition:
+    opacity    var(--lotus-motion-base) var(--lotus-motion-ease),
+    filter     var(--lotus-motion-base) var(--lotus-motion-ease),
+    background var(--lotus-motion-base) var(--lotus-motion-ease),
+    box-shadow var(--lotus-motion-base) var(--lotus-motion-ease),
+    transform  var(--lotus-motion-base) var(--lotus-motion-ease);
+}
+
+.lotus-glass--no-anim { animation: none; }
+
+.lotus-glass--focused {
+  background: var(--lotus-surface-focused);
+  box-shadow: var(--lotus-shadow-glass-focused);
+  transform: scale(1.015);
+}
+
+.lotus-glass--dimmed {
+  opacity: 0.42;
+  filter: blur(2px);
+  transform: scale(0.985);
+}
+
+.lotus-glass__header {
+  padding: 24px 28px 0;
+}
+
+.lotus-glass__subtitle {
+  font-family: var(--lotus-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lotus-text-muted);
+}
+
+.lotus-glass__title {
+  margin-top: 6px;
+  font-family: var(--lotus-font-display);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--lotus-text);
+}
+
+.lotus-glass__body {
+  flex: 1;
+  padding: 16px 28px 24px;
+}
