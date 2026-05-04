@@ -28,6 +28,8 @@ export interface GlassModuleProps extends Omit<HTMLAttributes<HTMLDivElement>, "
  * `anyFocused` to its siblings (those will dim + blur). The cascade
  * delay is just `cascadeIndex * --lotus-motion-stagger`, so a row of
  * modules can simply enumerate.
+ *
+ * @summary backlit glass container for Locus modules with focus/dim choreography
  */
 export const GlassModule = forwardRef<HTMLDivElement, GlassModuleProps>(
   function GlassModule(

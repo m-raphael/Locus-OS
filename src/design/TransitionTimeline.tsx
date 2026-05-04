@@ -63,6 +63,11 @@ const itemV = {
 };
 
 // ── Component ────────────────────────────────────────────────────────────────
+/**
+ * Vertical timeline of system transition events with kind-specific glyphs and colors.
+ *
+ * @summary chronologically-sorted audit-log feed for space lifecycle events
+ */
 export function TransitionTimeline({
   events = [],
   emptyMessage = "No transitions yet.",

@@ -22,6 +22,8 @@ export interface LotusCanvasProps extends HTMLAttributes<HTMLDivElement> {
  * properties scoped to `.theme-vellum` and `.theme-moonlight`. The
  * component reads neither — switch themes by toggling the class on
  * `<html>` (Storybook does this via the toolbar).
+ *
+ * @summary animated gradient-mesh background with blobs, grain, and vignette
  */
 export function LotusCanvas({
   intensity = 1,

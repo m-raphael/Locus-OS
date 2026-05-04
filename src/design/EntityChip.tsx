@@ -13,6 +13,8 @@ export interface EntityChipProps extends Omit<HTMLAttributes<HTMLSpanElement>, "
  * Reads its dot/background/hairline colour from `--lotus-entity-{kind}`
  * (with the typed `entityColors` map as a literal fallback). Body text
  * stays themed so the chip works in both Vellum and Moonlight.
+ *
+ * @summary colored chip for NLP named-entity recognition output
  */
 export function EntityChip({ kind, label, className, style, ...rest }: EntityChipProps) {
   const fallback = entityColors[kind];

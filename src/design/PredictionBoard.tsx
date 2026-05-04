@@ -160,6 +160,11 @@ function Row({
   );
 }
 
+/**
+ * Predictive suggestions panel showing temporal patterns and graph-based recommendations.
+ *
+ * @summary AI-driven prediction feed with hero card, temporal list, and graph-related items
+ */
 export function PredictionBoard({
   headline,
   predictions = [],

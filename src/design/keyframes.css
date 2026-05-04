@@ -24,6 +24,16 @@
 
 @keyframes lotusDrift  { 0%,100% { translate: 0 0; } 50% { translate: 0 -10px; } }
 
+@keyframes lotusRadialIn {
+  0%   { opacity: 0; transform: scale(0.6); filter: blur(6px); }
+  100% { opacity: 1; transform: scale(1);   filter: blur(0); }
+}
+
+@keyframes lotusHeroFloatIn {
+  0%   { opacity: 0; transform: translate(-50%, -50%) translateY(18px) scale(0.9); filter: blur(6px); }
+  100% { opacity: 1; transform: translate(-50%, -50%) translateY(0)    scale(1);   filter: blur(0); }
+}
+
 /* z-axis push-back used by the Spaceflow → Flow transition. */
 @keyframes lotusSpaceRise {
   0%   { transform: translateZ(-300px) translateY(60px); opacity: 0; filter: blur(10px); }

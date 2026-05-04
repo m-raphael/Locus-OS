@@ -48,6 +48,11 @@ const nodeV = {
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
+/**
+ * SVG-based space graph visualization with orbiting related nodes and attention-path breadcrumbs.
+ *
+ * @summary interactive graph panel showing space relationships with spring-animated nodes
+ */
 export function GraphExplorerPanel({
   center,
   related = [],

@@ -17,6 +17,15 @@ const config: StorybookConfig = {
     options: {},
   },
   docs: { autodocs: "tag" },
+  typescript: {
+    reactDocgen: "react-docgen-typescript",
+    reactDocgenTypescriptOptions: {
+      shouldExtractLiteralValuesFromEnum: true,
+      shouldRemoveUndefinedFromOptional: true,
+      propFilter: (prop) =>
+        prop.parent ? !/node_modules\/(?!@types\/react)/.test(prop.parent.fileName) : true,
+    },
+  },
   // Public dir is opt-in — no static assets shipped with the design system yet.
 };
 
