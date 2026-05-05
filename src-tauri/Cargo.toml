@@ -18,9 +18,7 @@ locus-parser = { path = "../crates/locus-parser" }
 spaces-core = { path = "../crates/spaces-core" }
 locus-agent = { path = "../crates/locus-agent" }
 locus-nlp = { path = "../crates/locus-nlp" }
-axum = "0.8"
+locus-api = { path = "../crates/locus-api" }
 tokio = { version = "1", features = ["full"] }
-async-graphql = "7"
-async-graphql-axum = "7"
 dotenvy = "0.15"
 chrono = "0.4"

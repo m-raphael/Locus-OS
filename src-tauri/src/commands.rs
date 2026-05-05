@@ -1,5 +1,5 @@
 use crate::apps::{self, LegacyApp};
-use crate::marketplace::{PluginManifest, built_in_catalog};
+use locus_api::marketplace::{PluginManifest, built_in_catalog};
 use locus_agent::{AgentAction, AgentResult, governance::{GovernanceEngine, GovernanceSummary, PolicyDecision}, orchestrator::OrchestratorResult, scheduler::BackendStatus};
 use tauri::Manager;
 use locus_parser::IntentJson;

@@ -1,10 +1,7 @@
 use tauri::Manager;
 
-mod api;
 mod commands;
 mod apps;
-mod gql;
-mod marketplace;
 use commands::{AppDb, AppGovernance, AppGraph, AppNlp};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -46,7 +43,7 @@ pub fn run() {
 
             // Spawn embedded HTTP server hosting GraphQL + GraphiQL playground.
             let nlp = locus_nlp::pipeline();
-            tauri::async_runtime::spawn(api::serve(db.clone(), graph.clone(), nlp.clone()));
+            tauri::async_runtime::spawn(locus_api::api::serve(db.clone(), graph.clone(), nlp.clone()));
 
             app.manage(AppDb(db));
             app.manage(AppGraph(graph));

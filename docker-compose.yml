@@ -1,28 +1,67 @@
-# Locus-OS · backing services for local development.
-#
-# The Locus desktop app is a Tauri/macOS binary and is NOT containerised
-# itself — it runs natively and connects to the services defined here.
+# Locus-OS · full dev stack (frontend + backend + Neo4j).
 #
 # Quick start:
 #   1. cp .env.example .env  (set NEO4J_PASSWORD)
-#   2. docker compose up -d
-#   3. Neo4j Browser → http://127.0.0.1:7474   (login: neo4j / $NEO4J_PASSWORD)
-#   4. cargo tauri dev       (the app reads NEO4J_URI from .env)
+#   2. docker compose up --build
 #
-# Ports are bound to 127.0.0.1 only — never 0.0.0.0 — because the bolt
-# protocol is unencrypted by default and these are dev credentials.
+# Services
+#   frontend  → http://127.0.0.1:1420   (Vite dev server)
+#   backend   → http://127.0.0.1:4000   (GraphQL API)
+#   neo4j     → http://127.0.0.1:7474   (Browser UI)
+#               bolt://127.0.0.1:7687   (Bolt)
+#
+# All ports are bound to 127.0.0.1 only.
 
 services:
+
+  # ── Frontend ──────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "127.0.0.1:1420:1420"
+    depends_on:
+      - backend
+
+  # ── Storybook (opt-in) ────────────────────────────────────────────────────
+  # Only starts when explicitly requested:
+  #   docker compose --profile storybook up
+  storybook:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    profiles: ["storybook"]
+    ports:
+      - "127.0.0.1:6006:6006"
+    command: ["npm", "run", "storybook", "--", "--host", "0.0.0.0", "--no-open"]
+
+  # ── Backend (GraphQL API — no Tauri, pure Rust + axum) ───────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "127.0.0.1:4000:4000"
+    env_file: .env
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      LOCUS_HTTP_ADDR: "0.0.0.0:4000"
+      LOCUS_ALLOW_REMOTE: "1"
+    depends_on:
+      neo4j:
+        condition: service_healthy
+
+  # ── Neo4j ─────────────────────────────────────────────────────────────────
   neo4j:
-    image: neo4j:5.26-community
+    image: neo4j:latest
     container_name: locus-neo4j
     restart: unless-stopped
     ports:
-      - "127.0.0.1:7474:7474"   # HTTP / Browser UI
-      - "127.0.0.1:7687:7687"   # Bolt (used by neo4rs)
+      - "127.0.0.1:7475:7474"   # Browser UI (7474 taken by Neo4j Desktop)
+      - "127.0.0.1:7688:7687"   # Bolt (7687 taken by Neo4j Desktop)
     environment:
       NEO4J_AUTH: "${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set in .env}"
-      # APOC core ships with the image; enable so future graph algos work.
       NEO4J_PLUGINS: '["apoc"]'
       NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
       NEO4J_server_memory_heap_initial__size: "512m"
@@ -32,11 +71,11 @@ services:
       - locus-neo4j-logs:/logs
       - ./crates/spaces-core/migrations:/migrations:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 >/dev/null || exit 1"]
+      test: ["CMD-SHELL", "neo4j status | grep -q running || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 15
+      start_period: 60s
 
 volumes:
   locus-neo4j-data:

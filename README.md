@@ -17,10 +17,12 @@ A macOS-first, local-first companion shell that turns freeform intents into
 
 - macOS 13+
 - [Rust toolchain](https://rustup.rs/) (pinned via `rust-toolchain.toml`)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or any
-  Compose-v2-compatible engine) — for the Neo4j service
-- Node + `npm` — for the Vite/Sycamore dev server
+- Node + `npm`
 - `cargo install tauri-cli@^2` — once
+- **One** of the following for Neo4j:
+  - [Neo4j Desktop](https://neo4j.com/download/) — GUI, no terminal needed
+  - [Homebrew Neo4j](https://formulae.brew.sh/formula/neo4j) — `brew install neo4j`
+  - [Docker Desktop](https://www.docker.com/products/docker-desktop/) — containerised
 
 ### 2 · Configure environment
 
@@ -34,61 +36,113 @@ Then open `.env` and set at minimum:
 NEO4J_PASSWORD=<choose-something-real>
 ```
 
-The app **refuses to start** if `NEO4J_PASSWORD` is unset, `neo4j`, or
-`changeme`. Optional knobs (NVIDIA NIM key, alternate HTTP bind) are
-documented inline in `.env.example`.
+The app **refuses to start** if `NEO4J_PASSWORD` is unset, `neo4j`, or `changeme`.
 
-### 3 · Launch Neo4j with Docker
+---
 
+## Option A — Local (Neo4j Desktop or Homebrew)
+
+**No Docker required.** Use this if you have Neo4j Desktop or `brew install neo4j`.
+
+### Start Neo4j
+
+**Neo4j Desktop:** open the app and click **Start** on your DBMS.
+
+**Homebrew:**
 ```bash
-npm run db:up         # wraps `docker compose up -d`
+npm run db:up       # brew services start neo4j
+
+# First time only — set password to match your .env:
+cypher-shell -u neo4j -p neo4j \
+  "ALTER CURRENT USER SET PASSWORD FROM 'neo4j' TO '<your NEO4J_PASSWORD>'"
 ```
 
-This runs `neo4j:5.26-community` (with APOC core) bound to `127.0.0.1`
-only. It picks up `NEO4J_USER` / `NEO4J_PASSWORD` from your `.env`.
+### Launch the app
 
-Other db-lifecycle scripts:
+```bash
+npm install         # first time only
+npm start           # waits for Neo4j on :7687, then starts Vite + Tauri
+```
 
-| npm script | What it does |
+`npm start` polls port 7687 until Neo4j is ready — it works regardless of
+how you started Neo4j (Desktop, brew, or Docker).
+
+### Stop
+
+```bash
+npm run db:down     # brew services stop neo4j
+```
+
+---
+
+## Option B — Docker
+
+**Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) running.**
+
+Docker runs three containers: **frontend** (Vite), **backend** (GraphQL API), and **neo4j**.
+The Tauri native shell is not containerised — use Option A for the full desktop experience.
+
+> **Note:** Docker Neo4j binds to ports **7475** and **7688** to avoid conflicts with a
+> locally running Neo4j Desktop instance (which uses 7474/7687).
+
+### First-time setup
+
+```bash
+docker compose up --build
+```
+
+This builds all three images (~25 min first time, cached on subsequent runs) and starts the stack.
+
+### What you should see
+
+```
+backend-1   | [env] no .env file — using process environment
+backend-1   | [db] Neo4j connected at bolt://neo4j:7687
+backend-1   | [api] GraphQL ready: http://0.0.0.0:4000/graphql
+frontend-1  |   VITE v5.x  ready in ~2s
+frontend-1  |   ➜  Local: http://localhost:1420/
+```
+
+| Service | URL | Purpose |
+|---|---|---|
+| Frontend | http://127.0.0.1:1420 | Vite dev server |
+| Backend | http://127.0.0.1:4000/graphql | GraphQL API |
+| Neo4j Browser | http://127.0.0.1:7475 | DB admin UI |
+| Neo4j Bolt | bolt://127.0.0.1:7688 | (used internally by backend) |
+
+### Relaunch after first build
+
+**Via command line** (fastest):
+```bash
+docker compose up          # no --build needed, uses cached images
+docker compose down        # stop all containers, keep data
+```
+
+**Via Docker Desktop GUI:**
+1. Open Docker Desktop → **Containers**
+2. Find `locus-os` — click ▶ to start or ■ to stop the whole stack
+
+### With Storybook
+
+```bash
+docker compose --profile storybook up    # adds Storybook at http://127.0.0.1:6006
+```
+
+### Useful Docker commands
+
+| command | what it does |
 |---|---|
-| `npm run db:up` | Start Neo4j detached |
-| `npm run db:logs` | Tail `docker compose logs -f neo4j` |
-| `npm run db:down` | Stop Neo4j (data preserved) |
-| `npm run db:reset` | Stop + wipe volume + restart (destructive) |
+| `docker compose up --build` | Rebuild images and start stack |
+| `docker compose up` | Start stack with cached images |
+| `docker compose down` | Stop stack, keep volumes |
+| `docker compose down -v` | Stop stack and wipe Neo4j data |
+| `docker compose logs -f backend` | Tail backend logs |
+| `docker compose logs -f neo4j` | Tail Neo4j logs |
+| `docker compose --profile storybook up` | Start stack + Storybook |
 
-Verify it's up at the local endpoints:
+---
 
-| Endpoint | Purpose |
-|----------|---------|
-| http://127.0.0.1:7474 | Neo4j Browser UI (login: `neo4j` / `$NEO4J_PASSWORD`) |
-| `bolt://127.0.0.1:7687` | Bolt protocol — what the desktop app connects to |
-
-The schema (constraints on `:Intent`, `:Space`, `:Flow`, `:Module`, …) is
-created automatically by `spaces_core::Db::connect` on first launch. If you
-prefer to apply it manually:
-
-```bash
-docker compose exec neo4j cypher-shell -u neo4j -p "$NEO4J_PASSWORD" \
-  -f /migrations/0001_init.cypher
-```
-
-### 4 · Run the app
-
-One-shot — boots Neo4j (if not already up) and launches the Tauri shell:
-
-```bash
-npm install            # first time only
-npm run app            # = npm run db:up && cargo tauri dev
-```
-
-Or step-by-step:
-
-```bash
-npm run db:up
-cargo tauri dev
-```
-
-On startup you should see, with the GraphQL/UI bound to **localhost only**:
+## What you should see on startup (local)
 
 ```
 [env] loaded /…/.env
@@ -96,20 +150,11 @@ On startup you should see, with the GraphQL/UI bound to **localhost only**:
 [api] GraphQL ready: http://127.0.0.1:4000/graphql  ·  Playground: http://127.0.0.1:4000/graphiql
 ```
 
-Local endpoints once running:
-
 | URL | Purpose |
 |---|---|
-| http://127.0.0.1:4000/graphql | GraphQL endpoint (POST queries) |
+| http://127.0.0.1:4000/graphql | GraphQL endpoint |
 | http://127.0.0.1:4000/graphiql | GraphiQL playground (debug builds only) |
-| http://127.0.0.1:7474 | Neo4j Browser UI |
-
-### 5 · Stop services
-
-```bash
-npm run db:down                # = docker compose down            (keep data)
-npm run db:reset               # = docker compose down -v + up -d (wipe volume)
-```
+| http://127.0.0.1:7474 | Neo4j Browser UI (Neo4j Desktop / brew) |
 
 ---
 
@@ -151,5 +196,6 @@ cargo check --workspace            # fast typecheck
 cargo build --workspace            # full build
 cargo tauri dev                    # run the app (dev)
 cargo tauri build                  # produce a .app bundle
-docker compose logs -f neo4j       # tail Neo4j logs
+npm run db:logs                    # tail Neo4j logs (local/brew)
+npm run docker:logs                # tail Neo4j logs (Docker)
 ```

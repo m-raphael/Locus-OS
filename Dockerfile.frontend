@@ -1,0 +1,11 @@
+FROM node:24-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY index.html vite.config.ts tsconfig.json ./
+COPY src ./src
+COPY tokens ./tokens
+COPY .storybook ./.storybook
+EXPOSE 1420
+EXPOSE 6006
+CMD ["npm", "run", "dev", "--", "--host"]

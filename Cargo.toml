@@ -5,6 +5,7 @@ members = [
     "crates/locus-parser",
     "crates/spaces-core",
     "crates/locus-agent",
+    "crates/locus-api",
     "src-tauri",
 ]
 
