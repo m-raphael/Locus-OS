@@ -49,6 +49,6 @@
     "@vitejs/plugin-react": "^4",
     "storybook": "^8.6.18",
     "typescript": "^5",
-    "vite": "^5"
+    "vite": "^8"
   }
 }
